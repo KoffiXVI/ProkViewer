@@ -14,6 +14,8 @@ with open(LANGUAGE_PATH, 'r') as f:
 WINDOW_SHAPE = SETTINGS["window_shape"]
 WINDOW_MIN_DIMS = SETTINGS["min_window"]
 
+GENOME_FOLDER = "DUD FOR NOW"
+
 #temp variable for testing
 EXAMPLE_SEARCH_OUTPUT = [('Shewanella putrefaciens',
   24,

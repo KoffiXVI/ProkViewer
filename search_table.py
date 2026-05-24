@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, Frame, Label, Button, messagebox
 from global_defaults import EXAMPLE_SEARCH_OUTPUT, EXAMPLE_ADVANCED_SEARCH
 from custom_containers import Table
+from analysis_classes import Genome
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -106,14 +107,15 @@ class Search_Page(tk.Frame):
         """
         Will link to the analysis page
         """
-        return
+        base = Genome(*self.candidate_genome)
+        self.master.analysis_page.set_query_genome(base)
     
     def set_subject(self):
         """
         Will link to the analysis page
         """
-
-        return
+        base = Genome(*self.candidate_genome)
+        self.master.analysis_page.set_subject_genome(base)
 
     def clear_search_bar(self):
         self.text_zone.delete(0, tk.END)

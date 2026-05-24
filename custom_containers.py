@@ -38,8 +38,6 @@ class Table(ttk.Treeview):
         
         for line in self.data:
             self.insert('', tk.END, values=line)
-
-        #print(self.get_children())
     
     def cleanup(self):
         self.data = None
