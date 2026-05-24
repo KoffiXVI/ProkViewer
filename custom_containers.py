@@ -3,7 +3,7 @@ from tkinter import ttk, Frame, Label, Button, messagebox
 
 class PageViews(ttk.Notebook):
     def __init__(self, master:tk.Tk):
-        super().__init__()
+        super().__init__(master=master)
         self.master = master 
         self.search_page = None
         self.analysis_page = None
@@ -18,8 +18,8 @@ class PageViews(ttk.Notebook):
         self.pack(expand=True, fill=tk.BOTH)
 
 class Search_Page(tk.Frame):
-    def __init__(self,  master:PageViews, title="Search",):
-        super().__init__()
+    def __init__(self,  master:PageViews, title="Search"):
+        super().__init__(master=master)
 
         self.master = master 
         self.title = title
@@ -58,9 +58,17 @@ class Search_Page(tk.Frame):
 
         #Results Section
         self.PanRes = tk.PanedWindow(self, background='Red')
+        ttk.Label(self.PanRes, text="Results", anchor=tk.W).pack(side=tk.TOP, expand=False, fill=tk.X)
+        ttk.Separator(self.PanRes, orient=tk.HORIZONTAL).pack(side=tk.TOP, expand=False, fill=tk.X)
 
+        res_treeview = Prok_Search_Table(self.PanRes)
+        
         #Expanded section
         self.ResExpansion = tk.PanedWindow(self, background='Yellow')
+        ttk.Label(self.ResExpansion, text="Advanced Results", anchor=tk.W).pack(side=tk.TOP, expand=False, fill=tk.X)
+        ttk.Separator(self.ResExpansion, orient=tk.HORIZONTAL).pack(side=tk.TOP, expand=False, fill=tk.X)
+        
+        adv_res_treeview = Prok_Search_Table_Advanced(self.ResExpansion)
 
         #packing the full view
         self.PanH.pack(side=tk.TOP, expand=False, fill=tk.X)
@@ -76,3 +84,64 @@ class Search_Page(tk.Frame):
     def launch_search(self):
         var = self.text_zone.get()
         messagebox.showinfo("IMPORTANT INFORMATION", var)
+
+class Table(ttk.Treeview):
+    def __init__(self, master, columns, headings, data:list|None= None, **kwargs):
+        super().__init__(master, columns=columns, **kwargs)
+
+        self.master = master
+        self.columns = columns
+        self.headings = headings
+        self.data = data
+        
+        self._page_buildup(data)
+
+    def _page_buildup(self):
+        
+        for col, head in zip(self.columns, self.headings):
+            self.heading(col, text=head)
+            self.column(col, width=max(80, len(head)*11), anchor="w")
+
+        if self.data is not None:
+            self.insert_row()
+
+    def insert_row(self):
+        return
+    
+class Prok_Search_Table(Table):
+    """
+        command = f"SELECT DISTINCT Name, taxid, COUNT(taxid) \
+                       AS counter, assembly, link FROM {target_table} WHERE Name LIKE ? GROUP BY taxid;"
+    """
+    def __init__(self, master, data=None, **kwargs):
+        columns = ('name', 'taxid', 'copies')
+        headings = ('Name', 'Taxid', 'Copies')
+        super().__init__(master, columns, headings, data, show="headings")
+
+        self._table_buildup()
+
+    def _table_buildup(self):
+        self._page_buildup(self.data)
+        self.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+
+class Prok_Search_Table_Advanced(Table):
+    """
+        command = f"SELECT Name,reference,release_data, \
+                    modify_data, size, genes, ROUND(genes/size,2) as gene_ratio, protein, \
+                    ROUND(protein/size,2) as protein_ratio, assembly, link FROM {target_table} \
+                    WHERE Name LIKE ? AND taxid = ?;"
+    """
+    def __init__(self, master, data=None, **kwargs):
+        columns = ('name', 'reference', 'release_date', "modification_date", "size", "gene#",
+                                     "gene_ratio", "protein_ratio", "assembly")
+        
+        headings = ('Name', 'Reference', 'Release date', "Modification date", "Size", "Gene#",
+                                     "Gene Ratio", "Protein Ratio", "Assembly")
+        
+        super().__init__(master, columns, headings, data, show="headings")
+
+        self._table_buildup()
+
+    def _table_buildup(self):
+        self._page_buildup(self.data)
+        self.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
