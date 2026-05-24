@@ -155,7 +155,7 @@ class Blast_Parameter_Window(tk.PanedWindow):
                         self.threshold_entry, self.matrix_entry)
         
         try:
-            values = (entry.send_value() for entry in entry_points)
+            values = [entry.send_value() for entry in entry_points]
         except Exception:
             return (False, None)
         
