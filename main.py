@@ -1,5 +1,6 @@
 from custom_containers import *
 from global_defaults import * 
+from page_notebook import *
 
 class Main_Window(tk.Tk):
     

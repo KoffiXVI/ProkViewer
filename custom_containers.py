@@ -1,147 +1,46 @@
 import tkinter as tk
-from tkinter import ttk, Frame, Label, Button, messagebox
-
-class PageViews(ttk.Notebook):
-    def __init__(self, master:tk.Tk):
-        super().__init__(master=master)
-        self.master = master 
-        self.search_page = None
-        self.analysis_page = None
-        self.results_page = None
-        self.history_page = None
-        self.db_setup_page = None
-
-        self._page_buildup()
-
-    def _page_buildup(self):
-        self.search_page = Search_Page(self)
-        self.pack(expand=True, fill=tk.BOTH)
-
-class Search_Page(tk.Frame):
-    def __init__(self,  master:PageViews, title="Search"):
-        super().__init__(master=master)
-
-        self.master = master 
-        self.title = title
-
-        self._page_buildup()
-
-    def _page_buildup(self):
-        self.PanH = tk.PanedWindow(self, background='blue')
-
-        self.search_label = Label(self.PanH, text="Search")
-        self.search_label.pack(side=tk.LEFT)
-
-        self.search_query = tk.StringVar(value="Enter text here")
-        self.text_zone = tk.Entry(self.PanH,textvariable=self.search_query) #, background="white", foreground='black'
-        self.text_zone.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        #Setting the search_radiobuttons
-        self.search_option = tk.StringVar(value="name")
-
-        radio_button_options = {
-            "Search by Name":"name",
-            "Search by TaxId":"taxid"
-        }
-
-        for text, value in radio_button_options.items():
-            ttk.Radiobutton(self.PanH, text=text, value=value, variable=self.search_option).pack(side=tk.LEFT)
-
-        #Adding search buttons
-        search_button_options = {
-            "Search": self.launch_search, #launch_search
-            "Clear": self.clear_search_bar
-        }
-        
-        for text, func in search_button_options.items():
-            ttk.Button(self.PanH, text=text, command=func).pack(side=tk.LEFT)
-
-        #Results Section
-        self.PanRes = tk.PanedWindow(self, background='Red')
-        ttk.Label(self.PanRes, text="Results", anchor=tk.W).pack(side=tk.TOP, expand=False, fill=tk.X)
-        ttk.Separator(self.PanRes, orient=tk.HORIZONTAL).pack(side=tk.TOP, expand=False, fill=tk.X)
-
-        res_treeview = Prok_Search_Table(self.PanRes)
-        
-        #Expanded section
-        self.ResExpansion = tk.PanedWindow(self, background='Yellow')
-        ttk.Label(self.ResExpansion, text="Advanced Results", anchor=tk.W).pack(side=tk.TOP, expand=False, fill=tk.X)
-        ttk.Separator(self.ResExpansion, orient=tk.HORIZONTAL).pack(side=tk.TOP, expand=False, fill=tk.X)
-        
-        adv_res_treeview = Prok_Search_Table_Advanced(self.ResExpansion)
-
-        #packing the full view
-        self.PanH.pack(side=tk.TOP, expand=False, fill=tk.X)
-        self.PanRes.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-        self.ResExpansion.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-
-        self.master.add(self, text=self.title)
-
-    def clear_search_bar(self):
-        self.text_zone.delete(0, tk.END)
-        self.launch_search()
-
-    def launch_search(self):
-        var = self.text_zone.get()
-        messagebox.showinfo("IMPORTANT INFORMATION", var)
+from tkinter import ttk
 
 class Table(ttk.Treeview):
     def __init__(self, master, columns, headings, data:list|None= None, **kwargs):
-        super().__init__(master, columns=columns, **kwargs)
+        self.frame = ttk.Frame(master)
 
+        super().__init__(self.frame, columns=columns, **kwargs)
+        
         self.master = master
         self.columns = columns
         self.headings = headings
         self.data = data
         
-        self._page_buildup(data)
+        self._page_buildup()
 
     def _page_buildup(self):
-        
+
+        v_scroller = ttk.Scrollbar(self.frame, orient=tk.VERTICAL, command=self.yview)
+        self.configure(yscrollcommand=v_scroller.set)
+
+        self.grid(row=0, column=0, sticky="nsew")
+        v_scroller.grid(row=0, column=1, sticky="ns")
+
+        self.frame.grid_rowconfigure(0, weight=1)
+        self.frame.grid_columnconfigure(0, weight=1)
+
         for col, head in zip(self.columns, self.headings):
             self.heading(col, text=head)
-            self.column(col, width=max(80, len(head)*11), anchor="w")
+            self.column(col, width=max(80, len(head)*11), stretch=True, minwidth=50, anchor="w")
 
         if self.data is not None:
-            self.insert_row()
+            self.insert_rows(None)
 
-    def insert_row(self):
-        return
+    def insert_rows(self, data:list|tuple|None):
+        if data is not None:
+            self.data = data
+        
+        for line in self.data:
+            self.insert('', tk.END, values=line)
+
+        #print(self.get_children())
     
-class Prok_Search_Table(Table):
-    """
-        command = f"SELECT DISTINCT Name, taxid, COUNT(taxid) \
-                       AS counter, assembly, link FROM {target_table} WHERE Name LIKE ? GROUP BY taxid;"
-    """
-    def __init__(self, master, data=None, **kwargs):
-        columns = ('name', 'taxid', 'copies')
-        headings = ('Name', 'Taxid', 'Copies')
-        super().__init__(master, columns, headings, data, show="headings")
-
-        self._table_buildup()
-
-    def _table_buildup(self):
-        self._page_buildup(self.data)
-        self.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-
-class Prok_Search_Table_Advanced(Table):
-    """
-        command = f"SELECT Name,reference,release_data, \
-                    modify_data, size, genes, ROUND(genes/size,2) as gene_ratio, protein, \
-                    ROUND(protein/size,2) as protein_ratio, assembly, link FROM {target_table} \
-                    WHERE Name LIKE ? AND taxid = ?;"
-    """
-    def __init__(self, master, data=None, **kwargs):
-        columns = ('name', 'reference', 'release_date', "modification_date", "size", "gene#",
-                                     "gene_ratio", "protein_ratio", "assembly")
-        
-        headings = ('Name', 'Reference', 'Release date', "Modification date", "Size", "Gene#",
-                                     "Gene Ratio", "Protein Ratio", "Assembly")
-        
-        super().__init__(master, columns, headings, data, show="headings")
-
-        self._table_buildup()
-
-    def _table_buildup(self):
-        self._page_buildup(self.data)
-        self.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+    def cleanup(self):
+        self.data = None
+        self.delete(*self.get_children())
