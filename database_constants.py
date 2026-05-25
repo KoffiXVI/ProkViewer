@@ -11,6 +11,12 @@ COG_RES_TABLE = "cog_res"
 COG_FUNC_TABLE = "cog_functions"
 COG_NAMES_TABLE = "cog_names"
 
+TEMP_PROK_TABLE = "temp_prokaryotes"
+TEMP_NODES_TABLE = "temp_tax_nodes"
+TEMP_NAMES_TABLE = "temp_tax_names"
+TEMP_COG_FUNC_TABLE = "temp_cog_functions"
+TEMP_COG_NAMES_TABLE = "temp_cog_names"
+
 #Database name constants
 NAME = "Name"
 TAXID = "taxid"
@@ -45,7 +51,7 @@ MISMATCH = "mismatch"
 GAPS = "gaps"
 Q_START = "qstart"
 Q_END = "qend"
-S_START = "ssrart"
+S_START = "sstart"
 S_END = "ssend"
 BITSCORE = "bitscore"
 PARENT_TAXID = "parent_taxid"
@@ -62,7 +68,7 @@ PROK_DB_NAME = "PROK_DB.sqlite"
 #Database paths
 DB_STORE_PATH = os.path.abspath("database")
 PROK_DB_PATH = os.path.join(DB_STORE_PATH, PROK_DB_NAME)
-GENOME_FOLDER = os.path.join(DB_STORE_PATH, "genomes")
+GENOME_FOLDER = os.path.abspath("genomes")
 BLAST_TEMP_DB = "subject_data" #"Project_data/genomes/temp/database_genome/subject_data"
 
 #Taxonomy data

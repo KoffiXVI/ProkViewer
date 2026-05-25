@@ -104,16 +104,10 @@ class Search_Page(tk.Frame):
 
 
     def set_query(self):
-        """
-        Will link to the analysis page
-        """
         base = Genome(*self.candidate_genome)
         self.master.analysis_page.set_query_genome(base)
     
     def set_subject(self):
-        """
-        Will link to the analysis page
-        """
         base = Genome(*self.candidate_genome)
         self.master.analysis_page.set_subject_genome(base)
 
@@ -149,12 +143,7 @@ class Search_Page(tk.Frame):
         self.candidate_genome = row_data
         self.check_action_button_activity()
         
-
 class Prok_Search_Table(Table):
-    """
-        command = f"SELECT DISTINCT Name, taxid, COUNT(taxid) \
-                       AS counter, assembly, link FROM {target_table} WHERE Name LIKE ? GROUP BY taxid;"
-    """
     def __init__(self, master, data=None, **kwargs):
         columns = ('name', 'taxid', 'copies', 'assembly', 'link')
         headings = ('Name', 'Taxid', 'Copies', 'Assembly','Link')
@@ -168,12 +157,6 @@ class Prok_Search_Table(Table):
         self.frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
 class Prok_Search_Table_Advanced(Table):
-    """
-        command = f"SELECT Name,reference,release_data, \
-                    modify_data, size, genes, ROUND(genes/size,2) as gene_ratio, protein, \
-                    ROUND(protein/size,2) as protein_ratio, assembly, link FROM {target_table} \
-                    WHERE Name LIKE ? AND taxid = ?;"
-    """
     def __init__(self, master, data=None, **kwargs):
         columns = ('name', 'reference', 'release_date', "modification_date", "size", "gene#",
                                      "gene_ratio", "protein#", "protein_ratio", "assembly", "link")

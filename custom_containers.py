@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import filedialog as fd
 from tkinter import ttk
 
 def add_title_card(container:object, variable_name:str, title):
@@ -76,6 +77,9 @@ class Entry_element(tk.Frame):
     def edit_entry_status(self):
         self.entry_element.config(state=tk.DISABLED)
 
+    def send_value(self):
+        return self.stored_value
+
     @property
     def stored_value(self):
         return self.entry_element.get()
@@ -99,6 +103,34 @@ class Combobox_element(tk.Frame):
 
         self.entry_element.current(self.default_value)
     
+    def send_value(self):
+        return self.stored_value
+    
     @property
     def stored_value(self):
         return self.entry_element.get()
+    
+class File_Searcher(tk.Frame):
+    def __init__(self, master, button_text, **kwargs):
+       super().__init__(master, **kwargs)
+
+       self._page_buildup(button_text)
+
+    def _page_buildup(self, button_text):
+        
+        self.frame_button = ttk.Button(self, text=button_text, command=self.set_localfile)
+        self.frame_button.pack(side=tk.LEFT)
+        self.frame_var = tk.StringVar(self, value="")
+        self.frame_entry = tk.Entry(self, textvariable=self.frame_var, state="readonly")
+        self.frame_entry.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+    def set_localfile(self):
+        file_path = fd.askopenfilename()
+        self.frame_var.set(file_path)
+
+    def send_value(self):
+        return None if not len(self.stored_value.strip()) else self.stored_value
+    
+    @property
+    def stored_value(self):
+        return self.frame_entry.get()

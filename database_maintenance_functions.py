@@ -4,13 +4,13 @@ import numpy as np
 from global_defaults import error_handler
 from database_constants import *
 
-def table_operation(command:str, data:list|tuple, many:bool, returning:bool=False, db_name:str = PROK_DB_PATH):
+def table_operation(command:str, data:list|tuple, many:bool, returning:bool=False, connector:sqlite3.Connection=None, terminate:bool=True, db_name:str = PROK_DB_PATH):
     if not os.path.exists(db_name):
         e = FileNotFoundError("no database existing for operation")
         error_handler(e)
         raise e
     
-    conn = sqlite3.connect(db_name)
+    conn = connector if connector is not None else sqlite3.connect(db_name) 
     cursor = conn.cursor()
 
     cursor.execute('PRAGMA foreign_keys = ON')
@@ -27,9 +27,12 @@ def table_operation(command:str, data:list|tuple, many:bool, returning:bool=Fals
 
     conn.commit()
     cursor.close()
-    conn.close()
 
-    return res
+    if terminate:
+        conn.close()
+        return res
+    
+    return res, conn
 
 # RPS BLAST OPS
 def log_rpsblast_op(*args:tuple[str], target_table:str=COG_LOG_TABLE):
