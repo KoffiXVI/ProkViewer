@@ -1,11 +1,10 @@
 from __future__ import annotations
 import tkinter as tk
 import os
-import sqlite3
 from tkinter import ttk, Frame, Label, Button, messagebox, filedialog as fd
 from custom_containers import File_Searcher, Entry_element, add_title_card
 from database_constants import PROK_LINK, TAXDMP_LINK, COG_DATABASE_LINK, COG_FUNCTIONNAL_LINK, COG_FAMILY_LINK, GENOME_FOLDER
-from database_creation_functions import create_working_database, update_database
+from database_creation_functions import Database_Manager#create_working_database, update_database
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -72,7 +71,7 @@ class Database_actions(tk.PanedWindow):
     def confirm_setup(self):
         confirm = messagebox.askyesno(message="Create database with these settings ?", icon="question")
         if confirm:
-            self.master.setup_database(create_working_database)
+            self.master.setup_database(Database_Manager().create_working_database)
 
     def confirm_update(self):
         if not self.check_genome_folder():
@@ -81,7 +80,7 @@ class Database_actions(tk.PanedWindow):
         
         confirm = messagebox.askyesno(message="Update database with these settings ?", icon="question")
         if confirm:
-            self.master.update_database(update_database)
+            self.master.update_database(Database_Manager().update_database)
         
     def browse_genomes(self):
         if self.check_genome_folder():
@@ -240,8 +239,3 @@ class COG_Families_Link(Entry_element):
         base_state = tk.DISABLED
         super().__init__(master, entry_title, parameter_type, default_value, base_state, **kwargs)
         self.pack(side=tk.TOP, expand=True, fill=tk.X)
-        
-
-
-
-

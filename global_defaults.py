@@ -1,13 +1,6 @@
 import os
 import json
 
-def error_handler(e:Exception):
-    #Will later handle proper error logging
-    err = f"Failure to continue operation. Cause:{e}"
-    print(err)
-
-    return err
-
 
 APP_TITLE = "Prok Viewer"
 SETTINGS_PATH = os.path.abspath("user_settings/defaults.json")
