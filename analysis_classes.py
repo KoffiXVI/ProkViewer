@@ -3,7 +3,7 @@ import gzip
 import shutil
 import io
 import requests as req
-from global_defaults import GENOME_FOLDER
+from database_constants import GENOME_FOLDER
 
 class Template_Genome():
     def __init__(self):
