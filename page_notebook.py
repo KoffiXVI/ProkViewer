@@ -3,6 +3,7 @@ from tkinter import ttk
 from search_table import Search_Page
 from analysis_table import Analysis_Page
 from database_table import Database_Page
+from history_table import History_page
 
 class PageViews(ttk.Notebook):
     def __init__(self, master:tk.Tk):
@@ -20,4 +21,5 @@ class PageViews(ttk.Notebook):
         self.search_page = Search_Page(self)
         self.analysis_page = Analysis_Page(self)
         self.db_setup_page = Database_Page(self)
+        self.history_page = History_page(self)
         self.pack(expand=True, fill=tk.BOTH)

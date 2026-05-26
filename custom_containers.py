@@ -4,10 +4,6 @@ from tkinter import ttk
 
 def add_title_card(container:object, variable_name:str, title:str):
 
-    """
-    self.title_card = ttk.Label(self, text=self.title, anchor=tk.W)
-    self.title_card.pack(side=tk.TOP, expand=False, fill=tk.X)
-    """
     setattr(container, variable_name, ttk.Label(container, text=title, anchor=tk.W))
     getattr(container, variable_name).pack(side=tk.TOP, expand=False, fill=tk.X)
     ttk.Separator(container, orient=tk.HORIZONTAL).pack(side=tk.TOP, expand=False, fill=tk.X)
