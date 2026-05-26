@@ -21,13 +21,13 @@ class Database_Page(tk.Frame):
     
     def _page_buildup(self):
 
-        self.prokaryotes_options = Prokaryote_Window(self, bg="Blue")
+        self.prokaryotes_options = Prokaryote_Window(self, bg="White")
 
-        self.taxonomy_options = Taxonomy_Window(self, bg="Red")
+        self.taxonomy_options = Taxonomy_Window(self, bg="White")
 
-        self.cog_options = COG_Window(self, bg="Red")
+        self.cog_options = COG_Window(self, bg="White")
 
-        self.database_ops = Database_actions(self, bg="Yellow")
+        self.database_ops = Database_actions(self, bg="White")
 
         self.master.add(self, text=self.title)
 

@@ -121,7 +121,7 @@ class Combobox_element(tk.Frame):
     
 class File_Searcher(tk.Frame):
     def __init__(self, master, button_text, **kwargs):
-       super().__init__(master, **kwargs)
+       super().__init__(master, bg="White",**kwargs)
 
        self._page_buildup(button_text)
 

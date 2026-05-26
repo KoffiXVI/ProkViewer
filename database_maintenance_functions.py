@@ -2,6 +2,10 @@ import os
 import sqlite3
 import numpy as np
 from database_constants import *
+from analysis_classes import *
+from subprocess_functions import *
+import tempfile
+from tkinter import messagebox
 
 class Database_Ops_Handler():
     def __init__(self, db_name:str = PROK_DB_PATH):
@@ -69,7 +73,7 @@ class Database_Ops_Handler():
 
         command = f'INSERT INTO {target_table} ({LOG_ID}, {Q_ASSEMBLY}, {S_TITLE}, {EVALUE}) VALUES (?,?,?,?) ;'
 
-        self.table_operation(command, values, many=True)
+        self.table_operation(command, values, many=True, terminate=False)
 
     def delete_rpsblast_log_record(self, index:str|int, target_table:str=COG_LOG_TABLE):
 
@@ -101,7 +105,7 @@ class Database_Ops_Handler():
             (SELECT {S_TITLE} as {NAME_CODE} FROM {target_table} WHERE {LOG_ID} = ?)\
             as temp WHERE {names_table}.{NAME_CODE} = temp.{NAME_CODE};"
 
-        self.table_operation(command, (str(target),), many=False, returning = True)
+        self.table_operation(command, (str(target),), many=False, returning = True, terminate=False)
 
         res = np.column_stack((rpsblast_data, self.get_res()))
 
@@ -230,3 +234,101 @@ class Database_Ops_Handler():
         
         return self.get_res()
     
+    #BLASTP PIPELINE
+    def blast_pipeline(self, target_genomes:list[Genome],evalue=1e-10, ws=3, gapopen=11, gapextend=1, matrix:str="BLOSUM62",threshold=11, temp_db=BLAST_TEMP_DB):
+        query, subject = target_genomes
+        
+        for genome in target_genomes:
+            if not isinstance(genome, Genome):
+                e = TypeError(f'expected {Genome.__name__} for genome, got {type(genome).__name__} instead')
+                message = self.error_handler(e)
+                messagebox.showerror(message=message, icon="error")
+                self.terminate_connection()
+                return None, None, None
+            
+        existing = self.check_blast_log(query.assembly, subject.assembly, evalue, ws,gapopen,gapextend,matrix,threshold)
+
+        print("here is the actual matrix:", threshold)
+        
+        if len(existing) > 0:
+            res_table = self.load_previous_blast(existing[0][0])
+            print("results loaded from a previous blast operation")
+
+        else:
+            for genome in target_genomes: 
+                dowload_res, cause = genome.download_genome()
+                if not dowload_res:
+                    message = self.error_handler(cause)
+                    messagebox.showerror(message=message, icon="error")
+                    self.terminate_connection()
+                    return None, None, None
+            
+            with tempfile.TemporaryDirectory() as temp_db:
+                makedb(subject.get_faa(), temp_db)
+
+                res = protein_blast(src=query.get_faa(), target_db=temp_db, evalue=evalue, 
+                                    ws=ws,gapopen=gapopen,gapextend=gapextend,matrix=matrix,threshold=threshold)
+
+                res_table = np.array([line.split('\t') for line in res.splitlines()])
+
+                log_index = self.log_blast_op(*query.log_info(), *subject.log_info(),evalue, ws,gapopen,gapextend,matrix,threshold)
+
+                self.log_blast_res(log_index, res_table)
+
+        messagebox.showinfo(message="Blastp executed successfully")
+
+        return query.display_name, subject.display_name, Blast_Results_Table(res_table, evalue)
+    
+    #RPS BLAST PIPELINE
+    def rpsblast_pipeline(self, target_genome:Genome,evalue=1e-10):
+        if not isinstance(target_genome, Genome):
+            e = TypeError(f'expected {Genome.__name__} for genome parameter, got {type(genome).__name__} instead')
+            message = self.error_handler(e)
+            messagebox.showerror(message=message, icon="error")
+            self.terminate_connection()
+            return None
+            
+        existing = self.check_rpsblast_log(target_genome.assembly, evalue)
+        if len(existing) > 0:
+            res_table = self.load_previous_rpsblast(existing[0][0])
+
+            res_table = self.retrieve_cog_func(existing[0][0],res_table)
+            print("results loaded from a previous rpsblast operation")
+            
+        else:
+            dowload_res, cause = target_genome.download_genome()
+            if not dowload_res:
+                message = self.error_handler(cause)
+                messagebox.showerror(message=message, icon="error")
+                self.terminate_connection()
+                return None
+            
+            res = rps_blast(target_genome.get_faa())
+            res_table = np.array([line.split('\t') for line in res.splitlines()])
+            res_table[:,1] = [line[:line.index(',')] for line in res_table[:,1]]
+            
+            log_index = self.log_rpsblast_op(*target_genome.log_info(),evalue)
+            self.log_rpsblast_res(log_index, res_table)
+
+            res_table = self.retrieve_cog_func(log_index,res_table) #adding the function
+
+        return RPSBlast_Results_Table(res_table, evalue)
+    
+    def sequenced_rps_blast(self, target_genomes:list[Genome], evalue=1e-10):
+        results = list()
+        for genome in target_genomes:
+            res = self.rpsblast_pipeline(genome, evalue)
+            if res is None:
+                self.terminate_connection()
+                return None, None
+            results.append(res)
+
+        self.terminate_connection()
+        messagebox.showinfo(message="Sequence RPSBlast executed successfully")
+        return res
+    
+    def prepare_alignment_object():
+
+        #TBA
+
+        return

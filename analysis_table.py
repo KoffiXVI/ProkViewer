@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, Frame, Label, Button, messagebox
 from custom_containers import Table, Combobox_element, Entry_element, add_title_card
 from analysis_classes import Genome, Template_Genome
+from database_maintenance_functions import Database_Ops_Handler
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -57,14 +58,18 @@ class Analysis_Page(tk.Frame):
         proceed, data = self.Blast_Parameters.validate_inputs()
         if not proceed:
             return
-        print("launching blastp")
-        #later adding the blast function
+        print(data)
+        genomes = (self.Genome_window.query_card.genome, self.Genome_window.subject_card.genome)
+
+        Database_Ops_Handler().blast_pipeline(genomes, *data)
+        
         
     def validate_rpsblast_settings(self):
         proceed, data = self.RPS_Blast_Parameters.validate_inputs()
         if not proceed:
             return
-        print("launching rpsblast")
+        genomes = (self.Genome_window.query_card.genome, self.Genome_window.subject_card.genome)
+        Database_Ops_Handler().sequenced_rps_blast(genomes, data)
 
 class Analysis_actions(tk.PanedWindow):
     def __init__(self, master:Analysis_Page, **kwargs):
@@ -84,10 +89,14 @@ class Analysis_actions(tk.PanedWindow):
         self.pack(side=tk.BOTTOM, expand=True, fill=tk.BOTH)
 
     def launch_blastp(self):
-        self.master.validate_blastp_settings()
+        confirm = messagebox.askyesno(message="Launch Blastp with these settings ?", icon="question")
+        if confirm:
+            self.master.validate_blastp_settings()
 
     def launch_rpsblast_data(self):
-        self.master.validate_rpsblast_settings()
+        confirm = messagebox.askyesno(message="Launch RPS Blast with these settings ?", icon="question")
+        if confirm:
+            self.master.validate_rpsblast_settings()
         
     def check_action_button_activity(self, activate):
         if not activate:
@@ -151,7 +160,7 @@ class Blast_Parameter_Window(tk.PanedWindow):
     def validate_inputs(self):
         entry_points = (self.evalue_entry, self.word_size_entry, 
                         self.gap_open_cost_entry, self.gap_extend_cost_entry,
-                        self.threshold_entry, self.matrix_entry)
+                        self.matrix_entry, self.threshold_entry)
         
         try:
             values = [entry.send_value() for entry in entry_points]
