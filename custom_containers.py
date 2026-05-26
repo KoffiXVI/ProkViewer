@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog as fd
 from tkinter import ttk
 
-def add_title_card(container:object, variable_name:str, title):
+def add_title_card(container:object, variable_name:str, title:str):
 
     """
     self.title_card = ttk.Label(self, text=self.title, anchor=tk.W)
@@ -78,7 +78,10 @@ class Entry_element(tk.Frame):
         self.entry_element.config(state=tk.DISABLED)
 
     def send_value(self):
-        return self.stored_value
+        return None if not len(self.stored_value.strip()) else self.stored_value
+    
+    def clear(self):
+        self.entry_element.delete(0, tk.END)
 
     @property
     def stored_value(self):
@@ -105,6 +108,16 @@ class Combobox_element(tk.Frame):
     
     def send_value(self):
         return self.stored_value
+
+    def disable(self):
+        self.entry_element.configure(state=tk.DISABLED)
+
+    def readonly(self):
+        self.entry_element.configure(state="readonly")
+    
+    @property
+    def current(self):
+        return self.entry_element.current()
     
     @property
     def stored_value(self):
@@ -134,3 +147,27 @@ class File_Searcher(tk.Frame):
     @property
     def stored_value(self):
         return self.frame_entry.get()
+    
+class Radio_Buttons(tk.Frame):
+    def __init__(self, master:object, buttons, var_type:object, var_default:int|float|str, title:str|None = None, **kwargs):
+        super().__init__(master, **kwargs)
+        
+        self.master = master
+        self.title = title
+        self.buttons = buttons
+        self.variable = var_type(value = var_default)
+        self._page_buildup()
+
+    def _page_buildup(self):
+        if self.title:
+            add_title_card(self, "title", self.title)
+        
+        for text, value, position in self.buttons:
+            ttk.Radiobutton(self, text=text, value=value, variable=self.variable).pack(side=position)
+
+    def send_value(self):
+        return self.stored_value
+    
+    @property
+    def stored_value(self):
+        return self.variable.get()

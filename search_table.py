@@ -1,9 +1,11 @@
 from __future__ import annotations
 import tkinter as tk
+from datetime import datetime
 from tkinter import ttk, Frame, Label, Button, messagebox
-from global_defaults import EXAMPLE_SEARCH_OUTPUT, EXAMPLE_ADVANCED_SEARCH
-from custom_containers import Table
+from database_maintenance_functions import Database_Ops_Handler
+from custom_containers import Table, Entry_element, Radio_Buttons, Combobox_element, add_title_card
 from analysis_classes import Genome
+from database_constants import NAME, TAXID
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -20,46 +22,17 @@ class Search_Page(tk.Frame):
         self._page_buildup()
 
     def _page_buildup(self):
-        self.PanH = tk.PanedWindow(self, background='blue')
-
-        self.search_label = Label(self.PanH, text="Search")
-        self.search_label.pack(side=tk.LEFT)
-
-        self.search_query = tk.StringVar(value="Enter text here")
-        self.text_zone = tk.Entry(self.PanH,textvariable=self.search_query) #, background="white", foreground='black'
-        self.text_zone.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        #Setting the search_radiobuttons
-        self.search_option = tk.StringVar(value="name")
-
-        radio_button_options = {
-            "Search by Name":"name",
-            "Search by TaxId":"taxid"
-        }
-
-        for text, value in radio_button_options.items():
-            ttk.Radiobutton(self.PanH, text=text, value=value, variable=self.search_option).pack(side=tk.LEFT)
-
-        #Adding search buttons
-        search_button_options = {
-            "Search": self.launch_search, #launch_search
-            "Clear": self.clear_search_bar
-        }
-        
-        for text, func in search_button_options.items():
-            ttk.Button(self.PanH, text=text, command=func).pack(side=tk.LEFT)
+        self.searchbar_section = Search_Page_Searchbar(self)
 
         #Results Section
         self.PanRes = tk.PanedWindow(self, background='Red')
-        ttk.Label(self.PanRes, text="Results", anchor=tk.W).pack(side=tk.TOP, expand=False, fill=tk.X)
-        ttk.Separator(self.PanRes, orient=tk.HORIZONTAL).pack(side=tk.TOP, expand=False, fill=tk.X)
-
+        add_title_card(self.PanRes, "", "Results")
+        
         self.res_treeview = Prok_Search_Table(self.PanRes)
         
         #Expanded section
         self.ResExpansion = tk.PanedWindow(self, background='Yellow')
-        ttk.Label(self.ResExpansion, text="Advanced Results", anchor=tk.W).pack(side=tk.TOP, expand=False, fill=tk.X)
-        ttk.Separator(self.ResExpansion, orient=tk.HORIZONTAL).pack(side=tk.TOP, expand=False, fill=tk.X)
+        add_title_card(self.ResExpansion, "", "Advanced Results")
         
         self.adv_res_treeview = Prok_Search_Table_Advanced(self.ResExpansion)
 
@@ -68,18 +41,17 @@ class Search_Page(tk.Frame):
         self.query_button = ttk.Button(self.PanAction, text="Set as Query", state=tk.DISABLED, command=self.set_query)
         self.subject_button = ttk.Button(self.PanAction, text="Set as Subject", state=tk.DISABLED, command=self.set_subject)
 
-        self.query_button.pack(side=tk.LEFT)
-        self.subject_button.pack(side=tk.LEFT)
+        self.query_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self.subject_button.pack(side=tk.RIGHT, expand=True, fill=tk.X)
 
         #Bindings
         self.res_treeview.bind("<<TreeviewSelect>>", self.launch_advanced_search)
         self.adv_res_treeview.bind("<<TreeviewSelect>>", self.update_candidate_genome_advanced)
 
         #packing the full view
-        self.PanH.pack(side=tk.TOP, expand=False, fill=tk.X)
         self.PanRes.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
         self.ResExpansion.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-        self.PanAction.pack(side=tk.BOTTOM, expand=False)
+        self.PanAction.pack(side=tk.BOTTOM, expand=False, fill=tk.BOTH)
 
         self.master.add(self, text=self.title)
 
@@ -102,7 +74,6 @@ class Search_Page(tk.Frame):
         row_data = self.adv_res_treeview.item(selected, "values")
         self.candidate_genome = (*self.candidate_genome[:-2], *row_data[-2:])
 
-
     def set_query(self):
         base = Genome(*self.candidate_genome)
         self.master.analysis_page.set_query_genome(base)
@@ -112,23 +83,22 @@ class Search_Page(tk.Frame):
         self.master.analysis_page.set_subject_genome(base)
 
     def clear_search_bar(self):
-        self.text_zone.delete(0, tk.END)
         self.res_treeview.cleanup()
         self.adv_res_treeview.cleanup()
 
         self.candidate_genome = None
         self.check_action_button_activity()
 
-    def launch_search(self):
-        var = self.text_zone.get()
+    def launch_search(self, query, method):
         self.res_treeview.cleanup()
         self.adv_res_treeview.cleanup()
 
-        self.res_treeview.insert_rows(EXAMPLE_SEARCH_OUTPUT)
+        res = Database_Ops_Handler().process_query(query, method)
+
+        self.res_treeview.insert_rows(res)
 
         self.candidate_genome = None
         self.check_action_button_activity()
-        #messagebox.showinfo("IMPORTANT INFORMATION", var)
 
     def launch_advanced_search(self, event):
         selected = self.res_treeview.focus()
@@ -136,12 +106,70 @@ class Search_Page(tk.Frame):
             return
         
         self.adv_res_treeview.cleanup()
-        res = EXAMPLE_ADVANCED_SEARCH #later replaced by the written function for it
-        self.adv_res_treeview.insert_rows(res)
 
         row_data = self.res_treeview.item(selected, "values")
+        res = Database_Ops_Handler().advanced_process_query(*row_data[:2]) 
+        self.adv_res_treeview.insert_rows(res)
+
         self.candidate_genome = row_data
         self.check_action_button_activity()
+
+class Search_Page_Searchbar(tk.PanedWindow):
+    def __init__(self, master:Search_Page, title = "Search", **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.master = master
+        self.title = title
+        self.default_text = "Enter text here"
+        self._page_buildup()
+
+    def _page_buildup(self):
+        
+        self.search_bar = Entry_element(self, self.title, tk.StringVar, self.default_text, tk.NORMAL)
+        self.search_bar.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.radio_buttons = Search_radio_options(self)
+
+        #Adding search buttons
+        search_button_options = {
+            "Search": self.validate_search, 
+            "Clear": self.clear_search_bar
+        }
+        
+        for text, func in search_button_options.items():
+            ttk.Button(self, text=text, command=func).pack(side=tk.LEFT)
+
+        self.pack(side=tk.TOP, expand=False, fill=tk.X)
+    
+    def validate_search(self):
+        search_type = self.radio_buttons.send_value()
+        data = self.search_bar.send_value()
+        if search_type == TAXID:
+            try: 
+                data = int(data.strip())
+            except Exception:
+                message = "Please enter a valid number for a TaxID search"
+                messagebox.showwarning(message=message, icon="warning")
+                return
+        else:
+            data = data.strip()
+        
+        self.master.launch_search(data, search_type)
+    
+    def clear_search_bar(self):
+        self.search_bar.clear()
+        self.master.clear_search_bar()
+
+class Search_radio_options(Radio_Buttons):
+    def __init__(self, master:Search_Page_Searchbar, **kwargs):
+        radio_options = (
+        ("Search by Name", NAME, tk.LEFT),
+        ("Search by TaxId", TAXID, tk.LEFT)
+        )
+        parameter = tk.StringVar
+        default = NAME
+        super().__init__(master, radio_options, parameter, default, title=None, **kwargs)
+        self.pack(side=tk.LEFT)
         
 class Prok_Search_Table(Table):
     def __init__(self, master, data=None, **kwargs):
@@ -168,9 +196,64 @@ class Prok_Search_Table_Advanced(Table):
                                      "gene_ratio", "protein#", "protein_ratio", "assembly")
         
         super().__init__(master, columns, headings, data, show="headings", displaycolumns=user_seen)
-
+        self.original_data = None
         self._table_buildup()
 
+    def filter_results(self, option):
+        super().cleanup()
+        if option == "None":
+            self.insert_rows(self.original_data)
+        
+        elif option == "REPR/REFR":
+            data = [element for element in self.original_data if element[1] in ["REFR", "REPR"]]
+
+        elif "Date" in option:
+            data = sorted(self.original_data, key=lambda k: datetime.strptime(k[self.filter_options.current], '%Y-%m-%d'), reverse=True)
+        
+        else:
+            data = sorted(self.original_data, key=lambda x:x[self.filter_options.current], reverse=True)
+
+        super().insert_rows(data)
+
+    def cleanup(self):
+        super().cleanup()
+        self.data = None
+        self.filter_options.disable()
+         
+    def insert_rows(self, data):
+        if self.data is None and self.filter_options.stored_value == "None":
+            self.original_data = data
+        super().insert_rows(data)
+        self.filter_options.readonly()
+
     def _table_buildup(self):
+        self.filter_options = Advanced_search_table_Filters(self.master, self)
         self.frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
+
+class Advanced_search_table_Filters(Combobox_element):
+    def __init__(self, master, reference:Prok_Search_Table_Advanced, **kwargs):
+        value_list = ["None","REPR/REFR", "Release Date", "Modification Date", 
+                      "Size", "Gene#","Gene ratio","Protein number","Protein ratio"]
+        entry_title = "Filter by: "
+        default_value = 0
+        base_state = tk.DISABLED#"readonly"
+        self.reference = reference
+        super().__init__(master, entry_title, value_list, default_value, base_state, **kwargs)
+        self.entry_element.bind('<<ComboboxSelected>>', self.trigger_table_filter)
+        self.pack(side=tk.TOP, expand=False, fill=tk.X)
+
+    def trigger_table_filter(self, event):
+
+        self.reference.filter_results(self.stored_value)
+
+    def disable(self):
+        self.entry_element.set(self.value_list[0])
+        super().disable() 
+    
+    def readonly(self):
+        self.entry_element.set(self.value_list[0])
+        super().readonly() 
+
+    def send_value(self):
+        return self.stored_value

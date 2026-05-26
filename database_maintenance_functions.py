@@ -197,3 +197,36 @@ class Database_Ops_Handler():
         res, page_text = self.navigate_logs(command, target_table, view_window, max_view)
 
         return (res, page_text)
+
+    #QUERY OPS
+    def process_query(self, data:str, target:str|int, target_table:str=PROK_TABLE):
+        if target not in [NAME, TAXID]:
+            self.error_handler(ValueError(f"expectected {NAME} or {TAXID}, got '{target}' instead"))
+            return None 
+        
+        if target == NAME:
+            data = f"%{data}%"
+            command = f"SELECT DISTINCT {NAME}, {TAXID}, COUNT({TAXID}) \
+                        AS counter, {ASSEMBLY}, {LINK} FROM {target_table} WHERE {NAME} LIKE ? GROUP BY {TAXID};"
+        else:
+            command = f"SELECT DISTINCT {NAME}, {TAXID}, COUNT({TAXID}) \
+                        AS counter, {ASSEMBLY}, {LINK} FROM {target_table} WHERE {TAXID} = ?;"
+        
+        self.table_operation(command, (str(data),), many=False, returning=True)
+
+        return self.get_res()
+    
+    def advanced_process_query(self, target_name:str, target_id:str, target_table:str=PROK_TABLE):
+
+        target_name = f"%{target_name}%"
+
+        command = f"SELECT {NAME},{REFERENCE},{RELEASE_DATE}, \
+                        {MODIFY_DATE}, {SIZE}, {GENES}, ROUND({GENES}/{SIZE},2) as gene_ratio, {PROTEINS}, \
+                        ROUND({PROTEINS}/{SIZE},2) as protein_ratio, {ASSEMBLY}, {LINK} FROM {target_table} \
+                        WHERE {NAME} LIKE ? AND {TAXID} = ?;"
+        
+        self.table_operation(command, (target_name, target_id), many=False, returning=True)
+
+        
+        return self.get_res()
+    

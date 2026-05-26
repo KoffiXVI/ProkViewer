@@ -1,7 +1,6 @@
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk, Frame, Label, Button, messagebox
-from global_defaults import EXAMPLE_SEARCH_OUTPUT, EXAMPLE_ADVANCED_SEARCH
 from custom_containers import Table, Combobox_element, Entry_element, add_title_card
 from analysis_classes import Genome, Template_Genome
 
