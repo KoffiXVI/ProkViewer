@@ -218,7 +218,7 @@ class Skeleton_Actions(tk.PanedWindow):
 class Blastp_actions(Skeleton_Actions):
     def __init__(self, master:Blastp_Results_Frame, reference:Blastp_Table, **kwargs):
 
-        ops_func_delete = Database_Ops_Handler.delete_blast_log_record
+        ops_func_delete = Database_Ops_Handler().delete_blast_log_record
 
         super().__init__(master, reference, ops_func_delete, **kwargs)
     

@@ -6,6 +6,7 @@ from analysis_classes import *
 from subprocess_functions import *
 import tempfile
 from tkinter import messagebox
+import math
 
 class Database_Ops_Handler():
     def __init__(self, db_name:str = PROK_DB_PATH):
@@ -175,7 +176,7 @@ class Database_Ops_Handler():
         if max_log_rows is None:
             return None, ("No record in database", True)
         
-        max_pages = max_log_rows//max_view
+        max_pages = math.ceil(max_log_rows / max_view)
         view_window = max(min(view_window, max_pages),0)
 
         self.table_operation(command,(max_view, view_window, max_view), many=False, returning=True, terminate=True)

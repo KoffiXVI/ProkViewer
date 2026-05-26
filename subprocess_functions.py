@@ -6,7 +6,7 @@ from analysis_classes import *
 
 def makedb(src, title:str|None=None, dbtype:str = "prot"):
     return subprocess.run(["makeblastdb","-in",f"{src}","-dbtype",dbtype, "-title",
-                           f"{src if title is None else title}","-out",f"{src if title is None else title}"])
+                           f"{src if title is None else title}","-out",f"{src if title is None else title}"], check=True)
 
 
 def protein_blast(src:str,target_db:str=BLAST_TEMP_DB, evalue=1e-10, ws=3, gapopen=11, gapextend=1, matrix:str="BLOSUM62",threshold=11):
@@ -17,7 +17,7 @@ def protein_blast(src:str,target_db:str=BLAST_TEMP_DB, evalue=1e-10, ws=3, gapop
     return subprocess.run(["blastp", "-query", f"{src}", "-db", f"{target_db}", "-evalue", f"{evalue}","-word_size",f"{ws}",
                            "-gapopen",f"{gapopen}","-gapextend",f"{gapextend}","-matrix",f"{matrix}","-threshold",f"{threshold}",
                              "-outfmt",'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore'], 
-                            text=True, stdout=subprocess.PIPE).stdout
+                            text=True, stdout=subprocess.PIPE, check=True).stdout
 
 def rps_blast(src:str,target_db:str=RPS_DABASE_PATH, evalue=1e-10):
 
@@ -25,4 +25,4 @@ def rps_blast(src:str,target_db:str=RPS_DABASE_PATH, evalue=1e-10):
         return None
     
     return subprocess.run(["rpsblast","-query",f"{src}","-db",f"{target_db}","-num_alignments","1","-evalue",f"{evalue}",
-                           "-outfmt",'6 qaccver stitle evalue'], text=True, stdout=subprocess.PIPE).stdout
+                           "-outfmt",'6 qaccver stitle evalue'], text=True, stdout=subprocess.PIPE, check=True).stdout
