@@ -1,8 +1,8 @@
 from __future__ import annotations
 import tkinter as tk
-from tkinter import ttk, Frame, Label, Button, messagebox
-from custom_containers import Table, Combobox_element, Entry_element, add_title_card
-from analysis_classes import Genome, Template_Genome
+from tkinter import ttk, messagebox
+from custom_containers import Combobox_element, Entry_element, add_title_card
+from analysis_classes import Genome, Template_Genome, Blast_Display_Manager
 from database_maintenance_functions import Database_Ops_Handler
 
 from typing import TYPE_CHECKING
@@ -20,16 +20,16 @@ class Analysis_Page(tk.Frame):
     
     def _page_buildup(self):
         #Genome information
-        self.Genome_window = Genomic_Window(self, background='blue')
+        self.Genome_window = Genomic_Window(self)
 
         #Blast Parameters
-        self.Blast_Parameters = Blast_Parameter_Window(self, background='red') #tk.PanedWindow(self, background='red')
+        self.Blast_Parameters = Blast_Parameter_Window(self) 
 
         #RPS Blast Parameters
-        self.RPS_Blast_Parameters = RPS_Blast_Parameter_Window(self, background='yellow')#tk.PanedWindow(self, background='yellow')
+        self.RPS_Blast_Parameters = RPS_Blast_Parameter_Window(self)
 
         #Action Buttons
-        self.OpsAction = Analysis_actions(self, background='Blue') #tk.PanedWindow(self, background='Blue')
+        self.OpsAction = Analysis_actions(self) 
 
         #Packing
         self.RPS_Blast_Parameters.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
@@ -58,18 +58,30 @@ class Analysis_Page(tk.Frame):
         proceed, data = self.Blast_Parameters.validate_inputs()
         if not proceed:
             return
-        print(data)
+        
         genomes = (self.Genome_window.query_card.genome, self.Genome_window.subject_card.genome)
 
-        Database_Ops_Handler().blast_pipeline(genomes, *data)
+        query_name, subject_name, blast_table = Database_Ops_Handler().blast_pipeline(genomes, *data)
+
+        confirm = messagebox.askyesno(message="Also retreive a RPS Blast Operations ?")
+
+        q_rps, s_rps = None, None
+
+        if confirm:
+            q_rps, s_rps = self.validate_rpsblast_settings()
+
         
+        blast_displayer = Blast_Display_Manager(query_name, subject_name, blast_table, q_rps, s_rps)
+
+        self.master.add_plot(blast_displayer)        
+
         
     def validate_rpsblast_settings(self):
         proceed, data = self.RPS_Blast_Parameters.validate_inputs()
         if not proceed:
-            return
+            return None, None
         genomes = (self.Genome_window.query_card.genome, self.Genome_window.subject_card.genome)
-        Database_Ops_Handler().sequenced_rps_blast(genomes, data)
+        return Database_Ops_Handler().sequenced_rps_blast(genomes, data)
 
 class Analysis_actions(tk.PanedWindow):
     def __init__(self, master:Analysis_Page, **kwargs):

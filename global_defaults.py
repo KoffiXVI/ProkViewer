@@ -15,5 +15,8 @@ with open(LANGUAGE_PATH, 'r') as f:
 WINDOW_SHAPE = SETTINGS["window_shape"]
 WINDOW_MIN_DIMS = SETTINGS["min_window"]
 
-MAX_VIEW = 1 #100
+#MAX NUMBER OF RESULTS PER TABLE VIEW
+MAX_VIEW = 100
+
+
 

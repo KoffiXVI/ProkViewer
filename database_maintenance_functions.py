@@ -341,10 +341,53 @@ class Database_Ops_Handler():
 
         self.terminate_connection()
         messagebox.showinfo(message="Sequence RPSBlast executed successfully")
-        return res
+        return results
+
+    #PHYLOGENY FUNCTIONS
+    def query_by_node(self, target:str, target_table:str=PROK_TABLE,nodes_tables:str=NODES_TABLE, names_table:str=NAMES_TABLE):
+
+        command = f"WITH RECURSIVE tree_search (name, id) AS (\
+        SELECT {names_table}.{NAME}, {nodes_tables}.{TAXID} FROM {nodes_tables} NATURAL JOIN {names_table} WHERE {nodes_tables}.{TAXID} = ?\
+        UNION ALL\
+        SELECT {names_table}.{NAME}, {nodes_tables}.{TAXID} FROM {nodes_tables} NATURAL JOIN {names_table} JOIN tree_search ON {nodes_tables}.{PARENT_TAXID} = tree_search.id\
+        )\
+        SELECT tree_search.*, COUNT({target_table}.{TAXID}), {target_table}.{ASSEMBLY}, {target_table}.{LINK} FROM tree_search\
+            INNER JOIN {target_table} ON tree_search.id = {target_table}.{TAXID} GROUP BY {target_table}.{TAXID} ORDER BY tree_search.name;"
+
+        self.table_operation(command, (str(target),), many=False, returning=True)
+        
+        return self.get_res()
+
+    def find_taxon_history(self, target:int|str, nodes_tables:str=NODES_TABLE, names_table:str=NAMES_TABLE):
+        command = f"WITH RECURSIVE tree_search (id, name, parent) AS (\
+            SELECT {nodes_tables}.{TAXID}, {names_table}.{NAME}, {nodes_tables}.{PARENT_TAXID} \
+                FROM {nodes_tables} NATURAL JOIN {names_table} WHERE {nodes_tables}.{TAXID} = ? \
+            UNION ALL\
+            SELECT {nodes_tables}.{TAXID}, {names_table}.{NAME}, {nodes_tables}.{PARENT_TAXID} FROM \
+                {nodes_tables} NATURAL JOIN {names_table} JOIN tree_search \
+                    ON {nodes_tables}.{TAXID} = tree_search.parent AND tree_search.parent != 1)\
+                        SELECT * FROM tree_search;"
+        
+        self.table_operation(command, (str(target),), many=False, returning=True)
+
+        return self.get_res() 
+
     
-    def prepare_alignment_object():
+    def target_direct_parent(self, target:int|str, nodes_tables:str=NODES_TABLE, names_table:str=NAMES_TABLE):
+ 
+        command = f"SELECT {nodes_tables}.{TAXID}, {names_table}.name FROM {nodes_tables} NATURAL JOIN {names_table} WHERE {nodes_tables}.{TAXID} = (SELECT {PARENT_TAXID} \
+            FROM {nodes_tables} WHERE {nodes_tables}.{TAXID} = ?) ORDER BY {names_table}.{NAME};"
+        
+        self.table_operation(command, (str(target),), many=False, returning=True)
 
-        #TBA
+        return self.get_res()[0]
+    
 
-        return
+    def target_child_nodes(self, target:int|str, nodes_tables:str=NODES_TABLE, names_table:str=NAMES_TABLE):
+    
+        command = f"SELECT {nodes_tables}.{TAXID}, {names_table}.{NAME} FROM {nodes_tables} NATURAL JOIN {names_table} WHERE {nodes_tables}.{PARENT_TAXID} = ?\
+            ORDER BY {names_table}.{NAME};"
+        
+        self.table_operation(command, (str(target),), many=False, returning=True)
+
+        return self.get_res() 

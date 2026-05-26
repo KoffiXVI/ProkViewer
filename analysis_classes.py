@@ -105,14 +105,13 @@ class RPSBlast_Results_Table(np.ndarray):
         return self[:,[0, 3]]
     
     def filter_by_family(self, id:list[str]|None=None, evalue=1e-10):
-        """
-        ids will be from a superfamily id list to prevent unrecognizable id values 
-        """
+        
         if not isinstance(id, list) and id is not None:
-            if not isinstance(id, str):
+            if id is not None and isinstance(id, str):
+                id = [id]
+            elif id is not None and not isinstance(id, list):
                 raise AttributeError(f"Expected list[str] or str for id, got {type(list).__name__} instead")
-            id = list(id)
-
+            
         filtered_table = self[np.where(self.al_eval[:, -1].astype(float) < evalue)]
         
         res = filtered_table
@@ -207,7 +206,12 @@ class Blast_Results_Table(np.ndarray):
 
 
 class Blast_Display_Manager():
-    def __init__(self, blast_table:Blast_Results_Table, q_rpblast:RPSBlast_Results_Table|None=None, s_rpblast:RPSBlast_Results_Table|None=None):
+    def __init__(self, query_name, subject_name, blast_table:Blast_Results_Table, 
+                 q_rpblast:RPSBlast_Results_Table|None=None, 
+                 s_rpblast:RPSBlast_Results_Table|None=None):
+        
+        self.query_name = query_name
+        self.subject_name = subject_name
         self.q_rpblast = q_rpblast
         self.s_rpblast = s_rpblast
         self.blast_table = blast_table
@@ -221,15 +225,19 @@ class Blast_Display_Manager():
         self.saved_diag_pos = None
         
     def get_display_data(self, evalue=0, q_filter_params:tuple|None = None, s_filter_params:tuple|None = None):
-        if q_filter_params is not None:
-            q_filter = self.q_rpblast.filter_by_family(*q_filter_params)
-        else:
-            q_filter = self.q_rpblast.filter_by_family(*self.q_filter_defaults)
+        q_filter = None
+        s_filter = None
+        if self.q_rpblast is not None:
+            if q_filter_params is not None:
+                q_filter = self.q_rpblast.filter_by_family(*q_filter_params)
+            else:
+                q_filter = self.q_rpblast.filter_by_family(*self.q_filter_defaults)
         
-        if s_filter_params is not None:
-            s_filter = self.s_rpblast.filter_by_family(*s_filter_params)
-        else:
-            s_filter = self.s_rpblast.filter_by_family(*self.s_filter_defaults) 
+        if self.s_rpblast is not None:
+            if s_filter_params is not None:
+                s_filter = self.s_rpblast.filter_by_family(*s_filter_params)
+            else:
+                s_filter = self.s_rpblast.filter_by_family(*self.s_filter_defaults) 
 
         used_evalue = min(self.max_blast_evalue, evalue)
 
@@ -289,7 +297,16 @@ class Blast_Display_Manager():
         self.saved_diag_pos = res
         return res
 
-    def display_dotplot(self, query_data:tuple|None=None, subject_data:tuple|None=None, coloring:list|None=None, tick_number:int=4, width:int|float=10, height:int|float=10, size:int=1, query_name:str="query_genome", db_query:str="database_genome"):
+    def display_dotplot(self, query_data:tuple|None=None, subject_data:tuple|None=None, 
+                        coloring:list|None=None, tick_number:int=4, width:int|float=8, 
+                        height:int|float=8, size:int=1, query_name:str|None=None, db_query:str|None=None):
+        
+        if query_name is None:
+            query_name = self.query_name 
+
+        if db_query is None:
+            db_query = self.subject_name 
+
         if coloring is None:
             if self.saved_diag_pos is None:
                 coloring = self.diagonal_tester()
@@ -305,38 +322,41 @@ class Blast_Display_Manager():
         fig.set_figwidth(width)
         fig.set_figheight(height)
         
+        """
         x_step_len = len(query_idx)
-        x_step_number = round(x_step_len / tick_number)
+        x_step_number = max(1, round(x_step_len / tick_number))
 
         y_step_len = len(subject_idx)
-        y_step_number = round(y_step_len / tick_number)
+        y_step_number = max(1, round(y_step_len / tick_number))
 
         query_ticks_pos = np.arange(x_step_len,step=x_step_number)
         query_labels = query_idx[np.arange(x_step_len, step=x_step_number)]
 
         subject_ticks_pos = np.arange(y_step_len,step=y_step_number)
         subject_labels = subject_idx[np.arange(y_step_len, step = y_step_number)]
+        """
 
         ax.scatter(query_pos,subject_pos, s=size, marker="o", color="black")
         if len(coloring) > 0:
             color_x, color_y = coloring[:,0],coloring[:,1]
             ax.scatter(color_x,color_y, s=size, marker="o", color="red")
         
+        """
         ax.set_xticks(query_ticks_pos, query_labels, rotation=45)
         ax.set_yticks(subject_ticks_pos, subject_labels)
+        """
         
-        """
-        #ax.set_yticks([])
-        #ax.set_xticks([])
-        Will be important to remove ticklabels when implementing interactive graph
-        """
-
-        ax.set_xlabel(f"{query_name}", fontsize=20)
-        ax.set_ylabel(f"{db_query}", fontsize=20)
+        ax.set_yticks([])
+        ax.set_xticks([])
+        #Will be important to remove ticklabels when implementing interactive graph
+        
+        ax.set_xlabel(f"{query_name}", fontsize=10)
+        ax.set_ylabel(f"{db_query}", fontsize=10)
 
         ax.invert_yaxis()
         ax.xaxis.set(ticks_position="top",label_position="top")
 
-        ax.set_title(f"Blastp {query_name} vs {db_query}", fontsize=20, y=-0.05, verticalalignment = 'bottom')
+        ax.set_title(f"Blastp {query_name} vs {db_query}", fontsize=10, y=-0.05, verticalalignment = 'bottom')
         
-        plt.show()
+        self.saved_diag_pos = None
+        return fig

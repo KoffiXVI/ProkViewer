@@ -1,12 +1,11 @@
 from __future__ import annotations
 import tkinter as tk
-from datetime import datetime
-from tkinter import ttk, Frame, Label, Button, messagebox, filedialog as fd
-from custom_containers import File_Searcher, Entry_element, add_title_card, Table, Combobox_search_Filter
-from database_constants import PROK_LINK, TAXDMP_LINK, COG_DATABASE_LINK, COG_FUNCTIONNAL_LINK, COG_FAMILY_LINK, GENOME_FOLDER
+from tkinter import ttk, messagebox, filedialog as fd
+from custom_containers import Table, Combobox_search_Filter
 from database_maintenance_functions import Database_Ops_Handler
 from global_defaults import MAX_VIEW
 from tkinter import filedialog
+from analysis_classes import Blast_Results_Table, Blast_Display_Manager
 
 
 from typing import TYPE_CHECKING
@@ -95,7 +94,6 @@ class RPS_Blast_Results_Frame(Skeleton_Results_Frame):
         super().__init__(master, title, results_table, action_window, ops_func, **kwargs)
 
 
-      
 class Blastp_Table_filter_options(Combobox_search_Filter):
     def __init__(self, master:Blastp_Results_Frame, reference: Blastp_Table, **kwargs):
         
@@ -244,8 +242,22 @@ class Blastp_actions(Skeleton_Actions):
         self.pack(side=tk.BOTTOM, expand=False, fill=tk.BOTH)
 
     def rerun_blast(self):
-        #TBA with display table
-        return
+        selected = self.reference.focus()
+        if not selected:
+            return
+
+        row_data = self.reference.item(selected, "values")
+        query_name = f"{row_data[2]}_{row_data[3]}_{row_data[4]}"
+        subject_name = f"{row_data[5]}_{row_data[6]}_{row_data[7]}"
+        log_id = row_data[-1]
+
+        evalue = float(row_data[8])
+
+        res = Database_Ops_Handler().load_previous_blast(log_id)
+        blast_table = Blast_Results_Table(res, evalue)
+        blast_displayer = Blast_Display_Manager(query_name, subject_name, blast_table)
+
+        self.master.master.master.add_plot(blast_displayer)
     
     def download_results(self):
         selected = self.reference.focus()
@@ -321,7 +333,6 @@ class RPS_Blast_actions(Skeleton_Actions):
         except TypeError:
             #Happens in case of canceling the save
             return
-
 
 class Skeleton_Res_Table(Table):
     def __init__(self, master:Skeleton_Results_Frame, 

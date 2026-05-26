@@ -1,7 +1,7 @@
 from __future__ import annotations
 import tkinter as tk
 from datetime import datetime
-from tkinter import ttk, Frame, Label, Button, messagebox
+from tkinter import ttk, messagebox
 from database_maintenance_functions import Database_Ops_Handler
 from custom_containers import Table, Entry_element, Radio_Buttons, Combobox_element, add_title_card
 from analysis_classes import Genome
@@ -25,19 +25,19 @@ class Search_Page(tk.Frame):
         self.searchbar_section = Search_Page_Searchbar(self)
 
         #Results Section
-        self.PanRes = tk.PanedWindow(self, background='Red')
+        self.PanRes = tk.PanedWindow(self)
         add_title_card(self.PanRes, "", "Results")
         
         self.res_treeview = Prok_Search_Table(self.PanRes)
         
         #Expanded section
-        self.ResExpansion = tk.PanedWindow(self, background='Yellow')
+        self.ResExpansion = tk.PanedWindow(self)
         add_title_card(self.ResExpansion, "", "Advanced Results")
         
         self.adv_res_treeview = Prok_Search_Table_Advanced(self.ResExpansion)
 
         #Action Buttons section
-        self.PanAction = tk.PanedWindow(self, background='Blue')
+        self.PanAction = tk.PanedWindow(self)
         self.query_button = ttk.Button(self.PanAction, text="Set as Query", state=tk.DISABLED, command=self.set_query)
         self.subject_button = ttk.Button(self.PanAction, text="Set as Subject", state=tk.DISABLED, command=self.set_subject)
 
