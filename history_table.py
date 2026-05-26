@@ -2,9 +2,12 @@ from __future__ import annotations
 import tkinter as tk
 from datetime import datetime
 from tkinter import ttk, Frame, Label, Button, messagebox, filedialog as fd
-from custom_containers import File_Searcher, Entry_element, add_title_card, Table, Combobox_element
+from custom_containers import File_Searcher, Entry_element, add_title_card, Table, Combobox_search_Filter
 from database_constants import PROK_LINK, TAXDMP_LINK, COG_DATABASE_LINK, COG_FUNCTIONNAL_LINK, COG_FAMILY_LINK, GENOME_FOLDER
-from database_creation_functions import Database_Manager
+from database_maintenance_functions import Database_Ops_Handler
+from global_defaults import MAX_VIEW
+from tkinter import filedialog
+
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -16,309 +19,394 @@ class History_page(ttk.Notebook):
 
         self.master = master 
         self.title = title
-        self.blasp_section = None
+        self.blastp_section = None
         self.rps_blast_section = None
 
         self._page_buildup()
 
     def _page_buildup(self):
-        self.blasp_section = Blastp_Results_Frame(self)
+        self.blastp_section = Blastp_Results_Frame(self)
         self.rps_blast_section = RPS_Blast_Results_Frame(self)
+        self.bind("<FocusIn>", self.populate_history)
         self.master.add(self, text=self.title)
 
-class Blastp_Results_Frame(tk.Frame):
-    def __init__(self, master:History_page, title="Blastp Results", **kwargs):
+    def populate_history(self, event):
+        self.blastp_section.populate_history()
+        self.rps_blast_section.populate_history()
+
+
+class Skeleton_Results_Frame(tk.Frame):
+    def __init__(self, master:History_page, title, results_table,action_window, ops_func, **kwargs):
         super().__init__(master, **kwargs)
 
         self.master = master 
         self.title = title
+        self.view_window = 0
+        self.ops_func = ops_func
 
-        self._page_buildup()
+        self._page_buildup(results_table, action_window)
 
-    def _page_buildup(self):
-        self.results_table = Blastp_Table(self)
+    def _page_buildup(self, results_table:object, action_window:object):
+        self.results_table = results_table(self)
 
-        self.actions = Blastp_actions(self, self.results_table)
+        self.actions = action_window(self, self.results_table) #Blastp_actions
 
         self.page_reference = ttk.Label(self, text="page 0", anchor='center')
         self.page_reference.pack(side=tk.BOTTOM, expand=False, fill=tk.X)
 
         self.master.add(self, text=self.title)
 
-class Blastp_Table_filter_options(tk.PanedWindow):
-    def __init__(self, master:Blastp_Results_Frame, reference:Blastp_Table, title:str="Blastp filter options",**kwargs):
-        super().__init__(master, **kwargs)
+    def update_page_value(self, update:str):
+        self.page_reference.config(text=update)
+        
+    def populate_history(self):
+        self.results_table.cleanup()
+        res, page_data = self.ops_func(view_window=self.view_window, max_view=MAX_VIEW)
+        page_text, data_max = page_data
 
-        self.master = master 
-        self.title = title
-        self.title_card = None
+        if res is not None:
+            self.results_table.insert_rows(res)
+            if self.actions.movement == None:
+                self.actions.movement = tk.LEFT
+
+        else:
+            self.actions.movement = None
+
+        self.update_page_value(page_text)
+
+        if data_max or not self.view_window:
+            self.actions.deactivate_movement_buttons()
+
+class Blastp_Results_Frame(Skeleton_Results_Frame):
+    def __init__(self, master:History_page, **kwargs):
+        title = "Blastp Results"
+        results_table = Blastp_Table
+        action_window = Blastp_actions
+        ops_func = Database_Ops_Handler().navigate_blast_logs
+        super().__init__(master, title, results_table, action_window, ops_func, **kwargs)
+
+
+class RPS_Blast_Results_Frame(Skeleton_Results_Frame):
+    def __init__(self, master:History_page, **kwargs):
+        title = "Blastp Results"
+        results_table = RPS_Blast_Table
+        action_window = RPS_Blast_actions
+        ops_func = Database_Ops_Handler().navigate_rpsblast_logs
+        super().__init__(master, title, results_table, action_window, ops_func, **kwargs)
+
+
+      
+class Blastp_Table_filter_options(Combobox_search_Filter):
+    def __init__(self, master:Blastp_Results_Frame, reference: Blastp_Table, **kwargs):
+        
         self.reference = reference
+        value_list = list(self.reference.filter_index.keys())
+        default_combo_value = 0
+        base_combo_state = tk.DISABLED
+        default_filter_value = ""
+        default_filter_state = tk.DISABLED
+        combo_title = "Blastp filter options"
+        button_text = "Filter"
+        button_base_state = tk.DISABLED
+        button_func = self.filter_table
 
-        self._page_buildup()
-
-    def _page_buildup(self):
-        add_title_card(self, "title_card", self.title)
+        super().__init__(master, value_list, combo_title, default_combo_value, default_filter_value,
+                         base_combo_state, default_filter_state, button_text, button_base_state,
+                         button_func, **kwargs)
         
         self.pack(side=tk.TOP, expand=False, fill=tk.X)
+    
+    def filter_table(self):
+        self.reference.filter_results(self.current_filter, self.current_filter_var)
 
-class Blastp_actions(tk.PanedWindow):
-    def __init__(self, master:Blastp_Results_Frame, reference:Blastp_Table, **kwargs):
+class RPS_Blast_Table_filter_options(Combobox_search_Filter):
+    def __init__(self, master:RPS_Blast_Results_Frame, reference: RPS_Blast_Table, **kwargs):
+
+        self.reference = reference
+        value_list = list(self.reference.filter_index.keys())
+        default_combo_value = 0
+        base_combo_state = tk.DISABLED
+        default_filter_value = ""
+        default_filter_state = tk.DISABLED
+        combo_title = "RPS Blast filter options"
+        button_text = "Filter"
+        button_base_state = tk.DISABLED
+        button_func = self.filter_table
+
+        super().__init__(master, value_list, combo_title, default_combo_value, default_filter_value,
+                         base_combo_state, default_filter_state, button_text, button_base_state,
+                         button_func, **kwargs)
+        
+        self.pack(side=tk.TOP, expand=False, fill=tk.X)
+    
+    def filter_table(self):
+        self.reference.filter_results(self.current_filter, self.current_filter_var)
+
+class Skeleton_Actions(tk.PanedWindow):
+    def __init__(self, master:Skeleton_Results_Frame, reference:object, 
+                 ops_func_delete:function, **kwargs):
         super().__init__(master, **kwargs)
 
         self.master = master
         self.reference = reference
+        self.movement = tk.LEFT
+        self.ops_func_delete = ops_func_delete
+
         self._page_buildup()
     
     def _page_buildup(self):
-
-        self.blastp_button = ttk.Button(self, text="Previous page", state=tk.NORMAL, command=self.previous_record_page)
-        self.blastp_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        self.blastp_button = ttk.Button(self, text="Rerun blast", state=tk.NORMAL, command=self.rerun_blast)
-        self.blastp_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        self.rpblast_button = ttk.Button(self, text="Delete record", state=tk.NORMAL, command=self.delete_record)
-        self.rpblast_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        self.rpblast_button = ttk.Button(self, text="Download results", state=tk.NORMAL, command=self.download_results)
-        self.rpblast_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        self.blastp_button = ttk.Button(self, text="Next page", state=tk.NORMAL, command=self.next_record_page)
-        self.blastp_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        self.pack(side=tk.BOTTOM, expand=False, fill=tk.BOTH)
-
-    def previous_record_page(self):
         return
     
-    def rerun_blast(self):
-        return
-    
-    def delete_record(self):
-        return
-    
-    def download_results(self):
-        return
-    
-    def next_record_page(self):
-        return
-    
-    """
-    def confirm_setup(self):
-        confirm = messagebox.askyesno(message="Create database with these settings ?", icon="question")
-        if confirm:
-            self.master.setup_database(Database_Manager().create_working_database)
-
-    def confirm_update(self):
-        if not self.check_genome_folder():
-            messagebox.showinfo(message="There is no genome folder.\nPlease Set up the database", icon='warning')
+    def activate_treeview_options(self, event):
+        selected = self.reference.focus()
+        if not selected:
+            self.deactivate_treeview_options(event)
             return
         
-        confirm = messagebox.askyesno(message="Update database with these settings ?", icon="question")
-        if confirm:
-            self.master.update_database(Database_Manager().update_database)
-        
-    def browse_genomes(self):
-        if self.check_genome_folder():
-            fd.askopenfile(initialdir=GENOME_FOLDER)
-        else:
-            messagebox.showinfo(message="There is no genome folder.\nPlease Set up the database", icon='warning')
+        self.delete_button.config(state=tk.NORMAL)
+        self.download_button.config(state=tk.NORMAL)
     
-    @staticmethod
-    def check_genome_folder():
-        return os.path.exists(GENOME_FOLDER)
-    """
-
-class Blastp_Table(Table):
-    def __init__(self, master:Blastp_Results_Frame, data=None, **kwargs):
-        """
-        command = f"INSERT INTO {target_table} ({Q_NAME}, {Q_ID}, {Q_ASSEMBLY}, {S_NAME}, {S_ID}, {S_ASSEMBLY},\
-            {EVALUE}, {WORD_SIZE}, {G_OPEN}, {G_EXTEND}, {MATRIX}, {LOOKUP_TABLE}) \
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING {LOG_ID} ;"
-        """
-        columns = ('q_name', 'q_id', 'q_assembly', 's_name', 's_id', 's_assembly',
-                   'e_value', 'word_size', 'gap_open', 'gap_extend', 'matrix')
-        headings = ('Q_name', 'Q_id', 'Q_assembly', 'S_name', 'S_id', 'S_assembly',
-                   'Evalue', 'Word_size', 'Gap_open', 'Gap_extend', 'Matrix')
+    def deactivate_treeview_options(self, event):
+        self.delete_button.config(state=tk.DISABLED)
+        self.download_button.config(state=tk.DISABLED)
         
-
-        super().__init__(master, columns, headings, data, show="headings")
-
-        self._table_buildup()
-
-    def _table_buildup(self):
-        self.filter_options = Blastp_Table_filter_options(self.master, self)
-        self.frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-
-
-class RPS_Blast_Results_Frame(tk.Frame):
-    def __init__(self, master:History_page, title="RPSBlast Results", **kwargs):
-        super().__init__(master, **kwargs)
-
-        self.master = master 
-        self.title = title
-
-        self._page_buildup()
-
-    def _page_buildup(self):
-
-        self.results_table = RPS_Blast_Table(self)
-
-        self.actions = RPS_Blast_actions(self, self.results_table)
-
-        self.page_reference = ttk.Label(self, text="page 0", anchor='center')
-        self.page_reference.pack(side=tk.BOTTOM, expand=False, fill=tk.X)
-        
-        self.master.add(self, text=self.title)
-
-
-"""
-RPS_Blast_Table_filter_options
-command = f"INSERT INTO {target_table} ({Q_NAME}, {Q_ID}, {Q_ASSEMBLY}, {EVALUE}) VALUES (?,?,?,?) RETURNING {LOG_ID} ;"
-"""
-
-class RPS_Blast_Table_filter_options(tk.PanedWindow):
-    def __init__(self, master:RPS_Blast_Results_Frame, reference:RPS_Blast_Table, title:str="RPS Blast filter options",**kwargs):
-        super().__init__(master, **kwargs)
-
-        self.master = master 
-        self.title = title
-        self.title_card = None
-        self.reference = reference
-
-        self._page_buildup()
-
-    def _page_buildup(self):
-        add_title_card(self, "title_card", self.title)
-        
-        self.pack(side=tk.TOP, expand=False, fill=tk.X)
-
-class RPS_Blast_actions(tk.PanedWindow):
-    def __init__(self, master:RPS_Blast_Results_Frame, reference:RPS_Blast_Table, **kwargs):
-        super().__init__(master, **kwargs)
-
-        self.master = master
-        self.reference = reference
-        self._page_buildup()
-    
-    def _page_buildup(self):
-
-        self.blastp_button = ttk.Button(self, text="Previous page", state=tk.NORMAL, command=self.previous_record_page)
-        self.blastp_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        self.rpblast_button = ttk.Button(self, text="Delete record", state=tk.NORMAL, command=self.delete_record)
-        self.rpblast_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        self.rpblast_button = ttk.Button(self, text="Download results", state=tk.NORMAL, command=self.download_results)
-        self.rpblast_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        self.blastp_button = ttk.Button(self, text="Next page", state=tk.NORMAL, command=self.next_record_page)
-        self.blastp_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        self.pack(side=tk.BOTTOM, expand=False, fill=tk.BOTH)
+    def deactivate_movement_buttons(self):
+        if not self.movement:
+            self.master.results_table.filter_options.disable()
+            self.prev_button.config(state=tk.DISABLED)
+            self.next_button.config(state=tk.DISABLED)
+        elif self.movement == tk.LEFT:
+            self.master.results_table.filter_options.activate()
+            self.prev_button.config(state=tk.DISABLED)
+            self.next_button.config(state=tk.NORMAL)
+        elif self.movement == tk.RIGHT:
+            self.master.results_table.filter_options.activate()
+            self.next_button.config(state=tk.DISABLED)
+            self.prev_button.config(state=tk.NORMAL)
 
     def previous_record_page(self):
-        return
+        self.movement = tk.LEFT
+        self.master.view_window -= 1
+        self.master.populate_history()
     
     def delete_record(self):
-        return
+        selected = self.reference.focus()
+        if not selected:
+            return
+        
+        confirm = messagebox.askyesno(message="Do you confirm deleting this record ?", icon="question")
+        if confirm:
+            
+            self.master.view_window = 0
+            self.movement = None
+
+            row_data = self.reference.item(selected, "values")
+            log_id = row_data[-1]
+
+            self.ops_func_delete(log_id)
+
+            self.master.populate_history()
     
     def download_results(self):
         return
     
     def next_record_page(self):
+        self.movement = tk.RIGHT
+        self.master.view_window += 1
+        self.master.populate_history()
+
+class Blastp_actions(Skeleton_Actions):
+    def __init__(self, master:Blastp_Results_Frame, reference:Blastp_Table, **kwargs):
+
+        ops_func_delete = Database_Ops_Handler.delete_blast_log_record
+
+        super().__init__(master, reference, ops_func_delete, **kwargs)
+    
+    def _page_buildup(self):
+
+        self.prev_button = ttk.Button(self, text="Previous page", state=tk.DISABLED, command=self.previous_record_page)
+        self.prev_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.rerun_button = ttk.Button(self, text="Rerun blast", state=tk.DISABLED, command=self.rerun_blast)
+        self.rerun_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.delete_button = ttk.Button(self, text="Delete record", state=tk.DISABLED, command=self.delete_record)
+        self.delete_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.download_button = ttk.Button(self, text="Download results", state=tk.DISABLED, command=self.download_results)
+        self.download_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.next_button = ttk.Button(self, text="Next page", state=tk.NORMAL, command=self.next_record_page)
+        self.next_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.reference.bind("<<TreeviewSelect>>", self.activate_treeview_options)
+
+        self.pack(side=tk.BOTTOM, expand=False, fill=tk.BOTH)
+
+    def rerun_blast(self):
+        #TBA with display table
         return
     
-
-class RPS_Blast_Table(Table):
-    def __init__(self, master:RPS_Blast_Results_Frame, data=None, **kwargs):
-        """
-        command = f"INSERT INTO {target_table} ({Q_NAME}, {Q_ID}, {Q_ASSEMBLY}, {EVALUE}) VALUES (?,?,?,?) RETURNING {LOG_ID} ;"
-        """
-        columns = ('q_name', 'q_id', 'q_assembly', 'e_value')
-        headings = ('Q_name', 'Q_id', 'Q_assembly', 'Evalue')
-
-        super().__init__(master, columns, headings, data, show="headings")
-
-        self._table_buildup()
-
-    def _table_buildup(self):
-        self.filter_options = Blastp_Table_filter_options(self.master, self)
-        self.frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-
-
-#table template
-
-class Prok_Search_Table_Advanced(Table):
-    def __init__(self, master, data=None, **kwargs):
-        columns = ('name', 'reference', 'release_date', "modification_date", "size", "gene#",
-                                     "gene_ratio", "protein#", "protein_ratio", "assembly", "link")
+    def download_results(self):
+        selected = self.reference.focus()
+        if not selected:
+            return
         
-        headings = ('Name', 'Reference', 'Release date', "Modification date", "Size", "Gene#",
-                                     "Gene Ratio", "Protein#", "Protein Ratio", "Assembly", "Link")
+        row_data = self.reference.item(selected, "values")
+        log_id = row_data[-1]
+        query_info = "".join(row_data[2:5])
+        subject_info = "".join(row_data[5:8])
+        default_name = f"Blastp_{query_info}_{subject_info}"
         
-        user_seen = ('name', 'reference', 'release_date', "modification_date", "size", "gene#",
-                                     "gene_ratio", "protein#", "protein_ratio", "assembly")
+        try:
+            with filedialog.asksaveasfile(initialfile=default_name,title="Save as", defaultextension='.txt') as file_saver:
+                Database_Ops_Handler().download_blast_res(filename=file_saver, Log_id=log_id) 
+        except TypeError:
+            #Happens in case of canceling the save
+            return
+    
+    def deactivate_treeview_options(self, event):
+        super().deactivate_treeview_options(event)
+        self.rerun_button.config(state=tk.DISABLED)
+
+    def activate_treeview_options(self, event):
+        selected = self.reference.focus()
+        if not selected:
+            self.deactivate_treeview_options(event)
+            return
         
+        super().activate_treeview_options(event)
+        self.rerun_button.config(state=tk.NORMAL)
+        
+
+class RPS_Blast_actions(Skeleton_Actions):
+    def __init__(self, master:RPS_Blast_Results_Frame, reference:RPS_Blast_Table, **kwargs):
+
+        ops_func_delete = Database_Ops_Handler.delete_rpsblast_log_record
+
+        super().__init__(master, reference, ops_func_delete, **kwargs)
+    
+    def _page_buildup(self):
+
+        self.prev_button = ttk.Button(self, text="Previous page", state=tk.DISABLED, command=self.previous_record_page)
+        self.prev_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.delete_button = ttk.Button(self, text="Delete record", state=tk.DISABLED, command=self.delete_record)
+        self.delete_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.download_button = ttk.Button(self, text="Download results", state=tk.DISABLED, command=self.download_results)
+        self.download_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.next_button = ttk.Button(self, text="Next page", state=tk.NORMAL, command=self.next_record_page)
+        self.next_button.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.reference.bind("<<TreeviewSelect>>", self.activate_treeview_options)
+
+        self.pack(side=tk.BOTTOM, expand=False, fill=tk.BOTH)
+
+    def download_results(self):
+        selected = self.reference.focus()
+        if not selected:
+            return
+        
+        row_data = self.reference.item(selected, "values")
+        log_id = row_data[-1]
+        query_info = "".join(row_data[2:5])
+        
+        default_name = f"RPS_Blast_{query_info}"
+        
+        try:
+            with filedialog.asksaveasfile(initialfile=default_name,title="Save as", defaultextension='.txt') as file_saver:
+                Database_Ops_Handler().download_rps_blast_res(filename=file_saver, Log_id=log_id) 
+        except TypeError:
+            #Happens in case of canceling the save
+            return
+
+
+class Skeleton_Res_Table(Table):
+    def __init__(self, master:Skeleton_Results_Frame, 
+                filter_options:Blastp_Table_filter_options|RPS_Blast_Table_filter_options,
+                columns, headings, user_seen, filter_index, data=None, **kwargs):
+       
+        
+        self.filter_index = filter_index
+        self.filter_options = filter_options
+
         super().__init__(master, columns, headings, data, show="headings", displaycolumns=user_seen)
         self.original_data = None
         self._table_buildup()
 
-    def filter_results(self, option):
-        super().cleanup()
-        if option == "None":
-            self.insert_rows(self.original_data)
-        
-        elif option == "REPR/REFR":
-            data = [element for element in self.original_data if element[1] in ["REFR", "REPR"]]
-
-        elif "Date" in option:
-            data = sorted(self.original_data, key=lambda k: datetime.strptime(k[self.filter_options.current], '%Y-%m-%d'), reverse=True)
-        
-        else:
-            data = sorted(self.original_data, key=lambda x:x[self.filter_options.current], reverse=True)
-
-        super().insert_rows(data)
-
-    def cleanup(self):
-        super().cleanup()
-        self.data = None
-        self.filter_options.disable()
-         
-    def insert_rows(self, data):
-        if self.data is None and self.filter_options.stored_value == "None":
-            self.original_data = data
-        super().insert_rows(data)
-        self.filter_options.readonly()
-
     def _table_buildup(self):
-        self.filter_options = Advanced_search_table_Filters(self.master, self)
+        self.filter_options = self.filter_options(self.master, self)
         self.frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
+    def insert_rows(self, data):
+        if self.data is None and self.filter_index[self.filter_options.current_filter] is None:
+            self.original_data = data
+        super().insert_rows(data)
 
-class Advanced_search_table_Filters(Combobox_element):
-    def __init__(self, master, reference:Prok_Search_Table_Advanced, **kwargs):
-        value_list = ["None","REPR/REFR", "Release Date", "Modification Date", 
-                      "Size", "Gene#","Gene ratio","Protein number","Protein ratio"]
-        entry_title = "Filter by: "
-        default_value = 0
-        base_state = tk.DISABLED#"readonly"
-        self.reference = reference
-        super().__init__(master, entry_title, value_list, default_value, base_state, **kwargs)
-        self.entry_element.bind('<<ComboboxSelected>>', self.trigger_table_filter)
-        self.pack(side=tk.TOP, expand=False, fill=tk.X)
+    def filter_results(self, key:str, filter_value:str):
+        super().cleanup()
+        if self.filter_index[key] is None:
+            self.insert_rows(self.original_data)
+            return
+        
+        data = list()
+        for element in self.original_data:
+            if filter_value in str(element[self.filter_index[key]]):
+                data.append(element)
 
-    def trigger_table_filter(self, event):
+        super().insert_rows(data)
 
-        self.reference.filter_results(self.stored_value)
+class Blastp_Table(Skeleton_Res_Table):
+    def __init__(self, master:Blastp_Results_Frame, data=None, **kwargs):
+        
+        columns = ("#",'date','q_name', 'q_id', 'q_assembly', 's_name', 's_id', 's_assembly',
+                   'e_value', 'word_size', 'gap_open', 'gap_extend', 'matrix', 'lookup_threshold','log_id')
+        
+        headings = ("#",'Date','Q_name', 'Q_id', 'Q_assembly', 'S_name', 'S_id', 'S_assembly',
+                   'Evalue', 'Word_size', 'Gap_open', 'Gap_extend', 'Matrix', 'Lookup Threshold', 'Log_id')
+        
+        user_seen = ("#",'date','q_name', 'q_id', 'q_assembly', 's_name', 's_id', 's_assembly',
+                   'e_value', 'word_size', 'gap_open', 'gap_extend', 'matrix', 'lookup_threshold')
+        
+        filter_index = {
+            "None":None,
+            "Date": 1,
+            "Q_name": 2,
+            "Q_id": 3,
+            "Q_assembly": 4,
+            "S_name":5,
+            "S_id": 6,
+            "S_assembly": 7,
+            "Evalue": 8, 
+            "Word Size": 9,
+            "Gap Open": 10,
+            "Gap Extend": 11,
+            "Matrix":12,
+            "Lookup Threshold": 13
+        }
 
-    def disable(self):
-        self.entry_element.set(self.value_list[0])
-        super().disable() 
-    
-    def readonly(self):
-        self.entry_element.set(self.value_list[0])
-        super().readonly() 
+        filter_options = Blastp_Table_filter_options
+        
+        super().__init__(master, filter_options, columns, headings, user_seen, filter_index, data, **kwargs)
 
-    def send_value(self):
-        return self.stored_value
+class RPS_Blast_Table(Skeleton_Res_Table):
+    def __init__(self, master:RPS_Blast_Results_Frame, data=None, **kwargs):
+        
+        columns = ("#", "date", "q_name", "q_id", "q_assembly", "evalue", "log_id")
+        headings = ("#", "Date",'Q_name', 'Q_id', 'Q_assembly', 'Evalue', "Log_id")
+        user_seen = ("#", "date", "q_name", "q_id", "q_assembly", "evalue")
+        
+        filter_index = {
+            "None":None,
+            "Date": 1,
+            "Q_name": 2,
+            "Q_id": 3,
+            "Q_assembly": 4,
+            "Evalue":5
+        }
+
+        filter_options = RPS_Blast_Table_filter_options
+        
+        super().__init__(master, filter_options, columns, headings, user_seen, filter_index, data, **kwargs)

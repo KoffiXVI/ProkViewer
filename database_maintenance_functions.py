@@ -79,7 +79,7 @@ class Database_Ops_Handler():
 
         command = f"DELETE FROM {target_table} WHERE {LOG_ID} = ? ;"
 
-        self.table_operation(command, (str(index),), many=False)
+        self.table_operation(command, (str(index),), many=False, terminate=False)
     
     def check_rpsblast_log(self, Q_acc:str, E_value:str, target_table:str=COG_LOG_TABLE):
         command = f"SELECT {LOG_ID}, {Q_NAME}, {Q_ID}, {Q_ASSEMBLY} \
@@ -135,7 +135,7 @@ class Database_Ops_Handler():
         
         command = f"DELETE FROM {target_table} WHERE {LOG_ID} = ? ;"
 
-        self.table_operation(command, (str(index),), many=False)
+        self.table_operation(command, (str(index),), many=False, terminate=False)
 
     def check_blast_log(self, Q_acc:str, S_acc:str, *args:tuple[str|int|float], target_table:str=LOG_TABLE):
         
@@ -151,7 +151,7 @@ class Database_Ops_Handler():
 
         return self.get_res()
 
-    def load_previous_blast(self, Log_id, target_table:str=RES_TABLE):
+    def load_previous_blast(self, Log_id:str, target_table:str=RES_TABLE):
         command = f"SELECT {Q_SEQID}, {S_SEQID}, {P_IDENT}, {LENGTH}, \
             {MISMATCH}, {GAPS}, {Q_START}, {Q_END}, \
             {S_START}, {S_END}, {EVALUE}, {BITSCORE} FROM {target_table} WHERE {LOG_ID} = ?"
@@ -173,16 +173,16 @@ class Database_Ops_Handler():
     def navigate_logs(self, command:str, target_table:str, view_window:int=0, max_view:int=10):
         max_log_rows = self.get_max_log_rows(target_table)
         if max_log_rows is None:
-            return []
+            return None, ("No record in database", True)
         
         max_pages = max_log_rows//max_view
         view_window = max(min(view_window, max_pages),0)
 
         self.table_operation(command,(max_view, view_window, max_view), many=False, returning=True, terminate=True)
 
-        page_text = f"page {view_window+1}/{max_pages+1}"
+        page_text = f"page {view_window+1}/{max_pages}"
 
-        return (self.get_res(), page_text)
+        return (self.get_res(), (page_text, view_window+1==max_pages))
     
     def navigate_rpsblast_logs(self, target_table:str = COG_LOG_TABLE, view_window:int=0, max_view:int=10):
 
@@ -201,6 +201,21 @@ class Database_Ops_Handler():
         res, page_text = self.navigate_logs(command, target_table, view_window, max_view)
 
         return (res, page_text)
+
+    def download_blast_res(self, filename:str, Log_id:str):
+        header = f"{Q_SEQID} {S_SEQID} {P_IDENT} {LENGTH} {MISMATCH} {GAPS} {Q_END} {S_START} {S_END} {EVALUE} {BITSCORE}"
+        
+        res = self.load_previous_blast(Log_id)
+
+        np.savetxt(filename, res, delimiter="\t", header=header, fmt="%s")
+
+    def download_rps_blast_res(self, filename:str, Log_id:str):
+        header = f"{Q_ASSEMBLY} {S_TITLE} {P_IDENT} {EVALUE} {FUNC_CODE}"
+        
+        res = self.load_previous_rpsblast(Log_id)
+        res = self.retrieve_cog_func(Log_id, res)
+
+        np.savetxt(filename, res, delimiter="\t", header=header, fmt="%s")
 
     #QUERY OPS
     def process_query(self, data:str, target:str|int, target_table:str=PROK_TABLE):

@@ -218,7 +218,7 @@ class Word_Size_Entry(Entry_element):
     def send_value(self):
         value = self.stored_value
         try:
-            value = abs(int(value.strip()))
+            value = min(max(abs(int(value.strip())), 2), 7)
         except Exception as e:
             message = f"Invalid parameter for Blastp\nPlease enter a valid Word Size"
             messagebox.showerror(message=message, icon="error")

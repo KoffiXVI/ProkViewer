@@ -26,8 +26,12 @@ class Table(ttk.Treeview):
         v_scroller = ttk.Scrollbar(self.frame, orient=tk.VERTICAL, command=self.yview)
         self.configure(yscrollcommand=v_scroller.set)
 
+        h_scroller = ttk.Scrollbar(self.frame, orient=tk.HORIZONTAL, command=self.xview)
+        self.configure(xscrollcommand=h_scroller.set)
+
         self.grid(row=0, column=0, sticky="nsew")
         v_scroller.grid(row=0, column=1, sticky="ns")
+        h_scroller.grid(row=1, column=0, sticky="ew")
 
         self.frame.grid_rowconfigure(0, weight=1)
         self.frame.grid_columnconfigure(0, weight=1)
@@ -167,3 +171,57 @@ class Radio_Buttons(tk.Frame):
     @property
     def stored_value(self):
         return self.variable.get()
+    
+class Combobox_search_Filter(tk.Frame):
+    def __init__(self, master, value_list:list, combobox_title:str, defaut_combo_value:int,
+                  default_filter_value, base_combo_state:str, default_filter_state, 
+                  button_text, button_base_state, button_func, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.master = master 
+        self.value_list = value_list
+        self.defaut_combo_value = defaut_combo_value
+        self.base_combo_state = base_combo_state
+
+        self.default_filter_value = default_filter_value
+        self.default_filter_state = default_filter_state
+
+        self.button_text = button_text
+        self.button_base_state = button_base_state
+        self.button_func = button_func
+        self.combobox_title = combobox_title
+        self._page_buildup()
+
+    def _page_buildup(self):
+
+        self.combo_entry = Combobox_element(self, self.combobox_title, self.value_list, self.defaut_combo_value, self.base_combo_state)
+        self.combo_entry.pack(side=tk.LEFT)
+
+        self.filter_var = tk.StringVar(value=self.default_filter_value)
+        self.text_filter = tk.Entry(self, textvariable=self.filter_var, state=self.default_filter_state)
+        self.text_filter.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self.activation_button = ttk.Button(self, text=self.button_text, state=self.button_base_state, command=self.button_func)
+        self.activation_button.pack(side=tk.RIGHT, expand=False)
+
+    def reset_field(self):
+        self.text_filter.delete(0, tk.END)
+
+    def disable(self):
+        self.reset_field()
+        self.combo_entry.disable()
+        self.text_filter.config(state=tk.DISABLED)
+        self.activation_button.config(state=tk.DISABLED)
+
+    def activate(self): 
+        self.combo_entry.readonly()
+        self.text_filter.config(state=tk.NORMAL)
+        self.activation_button.config(state=tk.NORMAL)
+        
+    @property
+    def current_filter(self):
+        return self.combo_entry.send_value()
+    
+    @property
+    def current_filter_var(self):
+        return self.text_filter.get().strip()
