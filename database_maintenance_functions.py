@@ -264,7 +264,7 @@ class Database_Ops_Handler():
             
         existing = self.check_blast_log(query.assembly, subject.assembly, evalue, ws,gapopen,gapextend,matrix,threshold)
 
-        print("here is the actual matrix:", threshold)
+        #print("here is the actual matrix:", threshold)
         
         if len(existing) > 0:
             res_table = self.load_previous_blast(existing[0][0])

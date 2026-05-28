@@ -87,7 +87,7 @@ class Blastp_Results_Frame(Skeleton_Results_Frame):
 
 class RPS_Blast_Results_Frame(Skeleton_Results_Frame):
     def __init__(self, master:History_page, **kwargs):
-        title = "Blastp Results"
+        title = "RPS Blast Results"
         results_table = RPS_Blast_Table
         action_window = RPS_Blast_actions
         ops_func = Database_Ops_Handler().navigate_rpsblast_logs

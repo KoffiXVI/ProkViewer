@@ -247,7 +247,7 @@ class Blast_Display_Manager():
 
         return query_data, subject_data
     
-    def diagonal_tester(self, query_info:tuple|None=None, subject_info:tuple|None = None, ax_thres:int=300, ali_thres:int=300, distance = 1):
+    def diagonal_tester(self, query_info:tuple|None=None, subject_info:tuple|None = None, ax_thres:int=30, ali_thres:int=30, distance = 10):
         if query_info is None:
             if self.display_query_data is None:
                 self.get_display_data(self.max_blast_evalue)

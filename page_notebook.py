@@ -6,7 +6,7 @@ from analysis_table import Analysis_Page
 from database_table import Database_Page
 from history_table import History_page
 from plot_table import Dotplot_Page
-#from phylogeny_page import Phylogeny_Page Non functionnal 
+from phylogeny_page import Phylogeny_Page 
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -27,7 +27,7 @@ class PageViews(ttk.Notebook):
 
     def _page_buildup(self):
         self.search_page = Search_Page(self)
-        #self.phylogeny = Phylogeny_Page(self)
+        self.phylogeny = Phylogeny_Page(self)
         self.analysis_page = Analysis_Page(self)
         self.results_page = Dotplot_Page(self)
         self.history_page = History_page(self)

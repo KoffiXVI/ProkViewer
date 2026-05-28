@@ -2,7 +2,6 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk, messagebox
 from database_maintenance_functions import Database_Ops_Handler
-from database_constants import NAME, TAXID
 from analysis_classes import Genome
 from custom_containers import Table, add_title_card
 
@@ -11,15 +10,21 @@ if TYPE_CHECKING:
     from page_notebook import PageViews
 
 _DUMMY_PREFIX = "_dummy_"
-_ROOT_TAXID = 1
+_BACTERIA_TAXID = 2
+_ARCHAEA_TAXID = 2157
+_CELLULAR_ROOT = 131567
 
 
 class Taxonomy_Breadcrumb(tk.Frame):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master:Phylogeny_Top_Bar, **kwargs):
         super().__init__(master, **kwargs)
+        
+        self._page_buildup()
+
+    def _page_buildup(self):        
         self._widgets: list[tk.Widget] = []
 
-    def update_path(self, taxid: int | str):
+    def update_path(self, taxid: int|str):
         self.clear()
         try:
             history = Database_Ops_Handler().find_taxon_history(taxid)
@@ -29,7 +34,7 @@ class Taxonomy_Breadcrumb(tk.Frame):
 
         for i, (tid, name, _) in enumerate(reversed(history)):
             if i:
-                sep = ttk.Label(self, text=" › ")
+                sep = ttk.Label(self, text=" > ")
                 sep.pack(side=tk.LEFT)
                 self._widgets.append(sep)
 
@@ -39,8 +44,7 @@ class Taxonomy_Breadcrumb(tk.Frame):
             self._widgets.append(lbl)
 
     def _jump(self, taxid):
-        page: Phylogeny_Page = self.master.master
-        page.tree_panel.navigate_to(taxid)
+        self.master.master.master.tree_panel.navigate_to(taxid)
 
     def clear(self):
         for w in self._widgets:
@@ -49,9 +53,9 @@ class Taxonomy_Breadcrumb(tk.Frame):
 
 
 class Phylogeny_Top_Bar(tk.Frame):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master:Phylogeny_Page, **kwargs):
         super().__init__(master, **kwargs)
-        self.master: Phylogeny_Page = master
+        self.master = master
         self._page_buildup()
 
     def _page_buildup(self):
@@ -63,9 +67,6 @@ class Phylogeny_Top_Bar(tk.Frame):
         self.search_var = tk.StringVar()
         tk.Entry(search_row, textvariable=self.search_var).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=4)
 
-        self.search_option = tk.StringVar(value=NAME)
-        ttk.Radiobutton(search_row, text="By Name",  value=NAME,  variable=self.search_option).pack(side=tk.LEFT)
-        ttk.Radiobutton(search_row, text="By TaxID", value=TAXID, variable=self.search_option).pack(side=tk.LEFT)
         ttk.Button(search_row, text="Go",    command=self._jump_to_taxon).pack(side=tk.LEFT, padx=2)
         ttk.Button(search_row, text="Reset", command=self._reset).pack(side=tk.LEFT)
 
@@ -78,23 +79,18 @@ class Phylogeny_Top_Bar(tk.Frame):
         ttk.Separator(self, orient=tk.HORIZONTAL).pack(side=tk.TOP, fill=tk.X, pady=2)
 
     def _jump_to_taxon(self):
+        
         query = self.search_var.get().strip()
         if not query:
             return
 
-        if self.search_option.get() == TAXID:
-            try:
-                taxid = int(query)
-            except ValueError:
-                messagebox.showwarning(message="Please enter a valid TaxID number.", icon="warning")
-                return
-            self.master.tree_panel.navigate_to(taxid)
-        else:
-            res = Database_Ops_Handler().process_query(query, NAME)
-            if not res:
-                messagebox.showinfo(message=f"No taxon found for '{query}'.", icon="info")
-                return
-            self.master.tree_panel.navigate_to(res[0][1])
+        try:
+            taxid = int(query)
+        except ValueError:
+            messagebox.showwarning(message="Please enter a valid TaxID number.", icon="warning")
+            return
+        self.master.tree_panel.navigate_to(taxid)
+            
 
     def _reset(self):
         self.master.tree_panel.reset_to_root()
@@ -103,7 +99,7 @@ class Phylogeny_Top_Bar(tk.Frame):
 
 
 class Taxonomy_Tree_Panel(tk.Frame):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master:Phylogeny_Page, **kwargs):
         super().__init__(master, **kwargs)
         add_title_card(self, "_title", "Taxonomy Browser")
         self._page_buildup()
@@ -133,13 +129,15 @@ class Taxonomy_Tree_Panel(tk.Frame):
 
     def _load_root(self):
         self.tree.delete(*self.tree.get_children())
-        self.tree.insert("", tk.END, iid="1", text="root", values=(_ROOT_TAXID,))
-        self.tree.insert("1", tk.END, iid=f"{_DUMMY_PREFIX}1", text="")
-
+        self.tree.insert("", tk.END, iid=str(_BACTERIA_TAXID), text="Bacteria", values=(_BACTERIA_TAXID,))
+        self.tree.insert(str(_BACTERIA_TAXID), tk.END, iid=f"{_DUMMY_PREFIX}1", text="")
+        self.tree.insert("", tk.END, iid=str(_ARCHAEA_TAXID), text="Archaea", values=(_ARCHAEA_TAXID,))
+        self.tree.insert(str(_ARCHAEA_TAXID), tk.END, iid=f"{_DUMMY_PREFIX}2", text="")
+        
     def reset_to_root(self):
         self._load_root()
 
-    def _populate_children(self, parent_iid: str, taxid: int | str) -> int:
+    def _populate_children(self, parent_iid: str, taxid: int|str):
         try:
             children = Database_Ops_Handler().target_child_nodes(taxid)
         except Exception as e:
@@ -166,19 +164,25 @@ class Taxonomy_Tree_Panel(tk.Frame):
             if count == 0:
                 self.tree.item(node, open=False)
 
-    def navigate_to(self, taxid: int | str):
+    def navigate_to(self, taxid: int|str):
         try:
             history = Database_Ops_Handler().find_taxon_history(taxid)
         except Exception as e:
             print(e)
             return
 
-        path = list(reversed(history))
+        if len(history) < 2:
+            return
 
-        if not self.tree.exists("1"):
+        elif history[-1][0] != _CELLULAR_ROOT:
+            return
+        
+        path = list(reversed(history[:-1]))
+
+        if not self.tree.exists(str(_BACTERIA_TAXID)) or not self.tree.exists(str(_ARCHAEA_TAXID)):
             self._load_root()
 
-        parent_iid = "1"
+        parent_iid = str(path[0][0]) 
 
         for tid, _, _ in path[1:]:
             iid = str(tid)
@@ -201,16 +205,16 @@ class Taxonomy_Tree_Panel(tk.Frame):
 
 
 class Taxonomy_Node_Genome_Table(Table):
-    def __init__(self, master, data=None, **kwargs):
+    def __init__(self, master:Taxonomy_Genome_Panel, data=None, **kwargs):
         columns  = ("name", "taxid", "count", "assembly", "link")
-        headings = ("Name", "TaxID", "Genomes", "Assembly", "Link")
+        headings = ("Name", "TaxID", "Copies", "Assembly", "Link")
         user_seen = ("name", "taxid", "count", "assembly")
         super().__init__(master, columns, headings, data, show="headings", displaycolumns=user_seen, **kwargs)
         self.frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
 
 class Taxonomy_Genome_Actions(tk.Frame):
-    def __init__(self, master, reference: Taxonomy_Node_Genome_Table, phylogeny_page, **kwargs):
+    def __init__(self, master:Taxonomy_Genome_Panel, reference: Taxonomy_Node_Genome_Table, phylogeny_page, **kwargs):
         super().__init__(master, **kwargs)
         self.reference = reference
         self.page: Phylogeny_Page = phylogeny_page
@@ -228,7 +232,7 @@ class Taxonomy_Genome_Actions(tk.Frame):
         self.query_btn.config(state=state)
         self.subject_btn.config(state=state)
 
-    def _selected_genome(self) -> Genome | None:
+    def _selected_genome(self):
         selected = self.reference.focus()
         if not selected:
             return None
@@ -240,18 +244,15 @@ class Taxonomy_Genome_Actions(tk.Frame):
         if genome:
             notebook: PageViews = self.page.master
             notebook.analysis_page.set_query_genome(genome)
-            notebook.select(notebook.analysis_page)
 
     def set_subject(self):
         genome = self._selected_genome()
         if genome:
             notebook: PageViews = self.page.master
             notebook.analysis_page.set_subject_genome(genome)
-            notebook.select(notebook.analysis_page)
-
 
 class Taxonomy_Genome_Panel(tk.Frame):
-    def __init__(self, master, phylogeny_page, **kwargs):
+    def __init__(self, master:Phylogeny_Page, phylogeny_page, **kwargs):
         super().__init__(master, **kwargs)
         add_title_card(self, "_title", "Genomes under selected node")
 
@@ -259,7 +260,7 @@ class Taxonomy_Genome_Panel(tk.Frame):
         self.actions = Taxonomy_Genome_Actions(self, self.table, phylogeny_page)
         self.actions.pack(side=tk.BOTTOM, fill=tk.X)
 
-    def load_genomes(self, taxid: int | str, node_name: str):
+    def load_genomes(self, taxid: int|str, node_name: str):
         self.table.cleanup()
         try:
             res = Database_Ops_Handler().query_by_node(taxid)
