@@ -27,71 +27,71 @@ Téléchargement BLAST+ : https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/
 
 Racine du projet :
 
- main.py                            Point d'entrée de l'application
- global_defaults.py                 Chargement des constantes globales
+ - main.py                          : Point d'entrée de l'application
+ - global_defaults.py               :Chargement des constantes globales
                                     (titre, dimensions de fenêtre, etc.)
 
- page_notebook.py                   Gestion de la fenêtre principale
+ - page_notebook.py:                   Gestion de la fenêtre principale
                                     à onglets (ttk.Notebook)
 
- database_constants.py              Constantes partagées : noms des
+ - database_constants.py:              Constantes partagées : noms des
                                     tables SQL, des colonnes, et chemins
                                     vers les fichiers et dossiers
 
- database_creation_functions.py     Création, peuplement et mise à jour
+ - database_creation_functions.py:     Création, peuplement et mise à jour
                                     de la base de données SQLite
 
- database_maintenance_functions.py  Opérations bas niveau sur la base
+ - database_maintenance_functions.py:  Opérations bas niveau sur la base
                                     (requêtes, journalisation, pipelines
                                     BLAST et RPS-BLAST)
 
- database_table.py                  Interface graphique de l'onglet
+ - database_table.py:                  Interface graphique de l'onglet
                                     "DB Setup" (configuration BDD)
 
- search_table.py                    Interface de l'onglet de recherche
+ - search_table.py:                    Interface de l'onglet de recherche
                                     de génomes prokaryotes
 
- phylogeny_page.py		     Interface de l'onglet de recherche 
+ - phylogeny_page.py:		     Interface de l'onglet de recherche 
 				             de génomes prokaryotes par arborescence 
 
- analysis_table.py                  Interface de l'onglet d'analyse
+ - analysis_table.py:                  Interface de l'onglet d'analyse
                                     (lancement des pipelines BLAST)
 
- plot_table.py                      Interface de visualisation des
+ - plot_table.py:                      Interface de visualisation des
                                     dot plots (onglet "Plots")
 
- history_table.py                   Interface de l'historique des
+ - history_table.py:                   Interface de l'historique des
                                     analyses précédentes
 
- custom_containers.py               Composants graphiques réutilisables
+ - custom_containers.py:               Composants graphiques réutilisables
                                     (Table, Entry_element, Combobox,
                                     File_Searcher, Radio_Buttons, etc.)
 
- subprocess_functions.py            Appels aux outils BLAST externes
+ - subprocess_functions.py:            Appels aux outils BLAST externes
                                     (makeblastdb, blastp, rpsblast)
 
- analysis_classes.py                Classes de traitement des résultats
+ - analysis_classes.py:                Classes de traitement des résultats
                                     (Blast_Results_Table,
                                     RPSBlast_Results_Table,
                                     Blast_Display_Manager, Genome)
 
- user_settings/
-    defaults.json                   Paramètres utilisateur : dimensions
+ - user_settings/
+    defaults.json:                   Paramètres utilisateur : dimensions
                                     de la fenêtre, langue, thème.
                                     Modifier ce fichier pour changer
                                     la taille de la fenêtre au démarrage.
 
- assets/
-    text_data.json                  Données textuelles de l'interface
+ - assets/
+    text_data.json:                  Données textuelles de l'interface
                                     (libellés, messages)
 
- database/                          Dossier créé automatiquement lors
-    PROK_DB.sqlite                  de la première initialisation.
-    COG/                            Contient la base SQLite principale
-        Cog/Cog                     et les fichiers de la base COG
+ - database/                          Dossier créé automatiquement lors
+    ((PROK_DB.sqlite),                  de la première initialisation.
+    (COG/Cog/Cog))                            Contient la base SQLite principale
+                             et les fichiers de la base COG
                                     (téléchargés ou fournis localement).
 
- genomes/                            Dossier créé automatiquement.
+ - genomes/                            Dossier créé automatiquement.
                                      Contient les fichiers de protéomes
                                      (.faa) téléchargés depuis NCBI
                                      lors des analyses BLAST.
