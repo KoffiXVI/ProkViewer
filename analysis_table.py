@@ -63,7 +63,7 @@ class Analysis_Page(tk.Frame):
 
         query_name, subject_name, blast_table = Database_Ops_Handler().blast_pipeline(genomes, *data)
 
-        confirm = messagebox.askyesno(message="Also retreive a RPS Blast Operations ?")
+        confirm = messagebox.askyesno(message="Also retrieve a RPS Blast Operation ?")
 
         q_rps, s_rps = None, None
 

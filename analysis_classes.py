@@ -48,7 +48,7 @@ class Genome():
 
         if os.path.exists(self.accession_folder):
             if all([os.path.exists(path) for path in [faa_file, features_file]]):
-                print("data alredy existing") # to be removed later
+                #print("data alredy existing") # to be removed later
                 return (True, "Data alredy existing")
             else:
                 shutil.rmtree(self.accession_folder)
