@@ -1,8 +1,8 @@
 ![alt text](https://github.com/KoffiXVI/ProkViewer/blob/main/Plot_example.png?raw=true)
 
-====================================================================
-  PROK VIEWER — Instructions d'installation et d'utilisation
-====================================================================
+
+PROK VIEWER — Instructions d'installation et d'utilisation
+
 
 ----------------------------------------------------------------------
 1. PRÉREQUIS LOGICIELS
